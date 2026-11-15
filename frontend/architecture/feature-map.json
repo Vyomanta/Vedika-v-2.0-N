@@ -1,0 +1,726 @@
+[
+  {
+    "source": "components/AdminSidebar.jsx",
+    "module": "features/navigation/components/AdminSidebar.jsx"
+  },
+  {
+    "source": "components/CategoryShowcaseCarousel.jsx",
+    "module": "features/shared-widgets/components/CategoryShowcaseCarousel.jsx"
+  },
+  {
+    "source": "components/CodeFlowchartVisualizer.jsx",
+    "module": "features/diagrams/components/CodeFlowchartVisualizer.jsx"
+  },
+  {
+    "source": "components/CodePuzzle.jsx",
+    "module": "features/code-puzzles/components/CodePuzzle.jsx"
+  },
+  {
+    "source": "components/CodeVisualizer3D.jsx",
+    "module": "features/code-visualizer/components/CodeVisualizer3D.jsx"
+  },
+  {
+    "source": "components/CodingTutor.jsx",
+    "module": "features/coding-tutor/components/CodingTutor.jsx"
+  },
+  {
+    "source": "components/CompanionTabs.jsx",
+    "module": "features/landing/components/CompanionTabs.jsx"
+  },
+  {
+    "source": "components/CourseEmotionsSlider.jsx",
+    "module": "features/courses/components/CourseEmotionsSlider.jsx"
+  },
+  {
+    "source": "components/CourseInteractiveCanvas.jsx",
+    "module": "features/courses/components/CourseInteractiveCanvas.jsx"
+  },
+  {
+    "source": "components/CoursePage.jsx",
+    "module": "features/courses/components/CoursePage.jsx"
+  },
+  {
+    "source": "components/CurriculumShowcase.jsx",
+    "module": "features/landing/components/CurriculumShowcase.jsx"
+  },
+  {
+    "source": "components/Dashboard.jsx",
+    "module": "features/dashboard/components/Dashboard.jsx"
+  },
+  {
+    "source": "components/FeaturesGrid.jsx",
+    "module": "features/landing/components/FeaturesGrid.jsx"
+  },
+  {
+    "source": "components/FeralUIFlowCanvas.jsx",
+    "module": "features/diagrams/components/FeralUIFlowCanvas.jsx"
+  },
+  {
+    "source": "components/Footer.jsx",
+    "module": "features/navigation/components/Footer.jsx"
+  },
+  {
+    "source": "components/GeneralTutor.jsx",
+    "module": "features/general-tutor/components/GeneralTutor.jsx"
+  },
+  {
+    "source": "components/GlacierBackground.jsx",
+    "module": "features/visual-effects/components/GlacierBackground.jsx"
+  },
+  {
+    "source": "components/Header.jsx",
+    "module": "features/navigation/components/Header.jsx"
+  },
+  {
+    "source": "components/HeroMetrics.jsx",
+    "module": "features/landing/components/HeroMetrics.jsx"
+  },
+  {
+    "source": "components/HeroSection.jsx",
+    "module": "features/landing/components/HeroSection.jsx"
+  },
+  {
+    "source": "components/infographic/BottomToolbar.jsx",
+    "module": "features/infographics/components/BottomToolbar.jsx"
+  },
+  {
+    "source": "components/infographic/DrawingCursor.jsx",
+    "module": "features/infographics/components/DrawingCursor.jsx"
+  },
+  {
+    "source": "components/infographic/ExportControls.jsx",
+    "module": "features/infographics/components/ExportControls.jsx"
+  },
+  {
+    "source": "components/infographic/InfographicCanvas.jsx",
+    "module": "features/infographics/components/InfographicCanvas.jsx"
+  },
+  {
+    "source": "components/infographic/LayoutComponents.jsx",
+    "module": "features/infographics/components/LayoutComponents.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/CircularCycle.jsx",
+    "module": "features/infographics/components/renderers/CircularCycle.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/ComparisonLayout.jsx",
+    "module": "features/infographics/components/renderers/ComparisonLayout.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/DataChartLayout.jsx",
+    "module": "features/infographics/components/renderers/DataChartLayout.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/EditorialLayout.jsx",
+    "module": "features/infographics/components/renderers/EditorialLayout.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/HierarchyLayout.jsx",
+    "module": "features/infographics/components/renderers/HierarchyLayout.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/HorizontalProcess.jsx",
+    "module": "features/infographics/components/renderers/HorizontalProcess.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/RadialMap.jsx",
+    "module": "features/infographics/components/renderers/RadialMap.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/ScientificIllustration.jsx",
+    "module": "features/infographics/components/renderers/ScientificIllustration.jsx"
+  },
+  {
+    "source": "components/infographic/renderers/TimelineLayout.jsx",
+    "module": "features/infographics/components/renderers/TimelineLayout.jsx"
+  },
+  {
+    "source": "components/infographic/SceneRenderer.jsx",
+    "module": "features/infographics/components/SceneRenderer.jsx"
+  },
+  {
+    "source": "components/labs/BiologyLab.jsx",
+    "module": "features/labs/components/BiologyLab.jsx"
+  },
+  {
+    "source": "components/labs/ChemistryLab.jsx",
+    "module": "features/labs/components/ChemistryLab.jsx"
+  },
+  {
+    "source": "components/labs/DynamicMathVisualizer.jsx",
+    "module": "features/labs/components/DynamicMathVisualizer.jsx"
+  },
+  {
+    "source": "components/labs/LabTutorDrawer.jsx",
+    "module": "features/labs/components/LabTutorDrawer.jsx"
+  },
+  {
+    "source": "components/labs/MathEquationRenderer.jsx",
+    "module": "features/labs/components/MathEquationRenderer.jsx"
+  },
+  {
+    "source": "components/labs/MathLab.jsx",
+    "module": "features/labs/components/MathLab.jsx"
+  },
+  {
+    "source": "components/labs/PhetSimViewer.jsx",
+    "module": "features/labs/components/PhetSimViewer.jsx"
+  },
+  {
+    "source": "components/labs/PhysicsLab.jsx",
+    "module": "features/labs/components/PhysicsLab.jsx"
+  },
+  {
+    "source": "components/LayoutWrapper.jsx",
+    "module": "features/navigation/components/LayoutWrapper.jsx"
+  },
+  {
+    "source": "components/LessonPage.jsx",
+    "module": "features/lessons/components/LessonPage.jsx"
+  },
+  {
+    "source": "components/MermaidDiagram.jsx",
+    "module": "features/diagrams/components/MermaidDiagram.jsx"
+  },
+  {
+    "source": "components/MobileNav.jsx",
+    "module": "features/navigation/components/MobileNav.jsx"
+  },
+  {
+    "source": "components/OverviewModal.jsx",
+    "module": "features/landing/components/OverviewModal.jsx"
+  },
+  {
+    "source": "components/PacmanPagination.jsx",
+    "module": "features/shared-widgets/components/PacmanPagination.jsx"
+  },
+  {
+    "source": "components/ParticlesBackground.jsx",
+    "module": "features/visual-effects/components/ParticlesBackground.jsx"
+  },
+  {
+    "source": "components/PDFViewerModal.jsx",
+    "module": "features/landing/components/PDFViewerModal.jsx"
+  },
+  {
+    "source": "components/Playground.jsx",
+    "module": "features/code-playground/components/Playground.jsx"
+  },
+  {
+    "source": "components/PracticePlaygroundModal.jsx",
+    "module": "features/code-playground/components/PracticePlaygroundModal.jsx"
+  },
+  {
+    "source": "components/PricingSection.jsx",
+    "module": "features/landing/components/PricingSection.jsx"
+  },
+  {
+    "source": "components/ProgressPage.jsx",
+    "module": "features/progress/components/ProgressPage.jsx"
+  },
+  {
+    "source": "components/QuizzesAssignmentsWorkspace.jsx",
+    "module": "features/assessments/components/QuizzesAssignmentsWorkspace.jsx"
+  },
+  {
+    "source": "components/ResourcesCheatSheets.jsx",
+    "module": "features/resources/components/ResourcesCheatSheets.jsx"
+  },
+  {
+    "source": "components/ResourcesDSA.jsx",
+    "module": "features/resources/components/ResourcesDSA.jsx"
+  },
+  {
+    "source": "components/ResourcesDSACompanyWise.jsx",
+    "module": "features/resources/components/ResourcesDSACompanyWise.jsx"
+  },
+  {
+    "source": "components/ResourcesDSAResources.jsx",
+    "module": "features/resources/components/ResourcesDSAResources.jsx"
+  },
+  {
+    "source": "components/ResourcesHub.jsx",
+    "module": "features/resources/components/ResourcesHub.jsx"
+  },
+  {
+    "source": "components/ResourcesLibrary.jsx",
+    "module": "features/resources/components/ResourcesLibrary.jsx"
+  },
+  {
+    "source": "components/ResourcesMarkdownCheatSheet.jsx",
+    "module": "features/resources/components/ResourcesMarkdownCheatSheet.jsx"
+  },
+  {
+    "source": "components/Sidebar.jsx",
+    "module": "features/navigation/components/Sidebar.jsx"
+  },
+  {
+    "source": "components/StitchAICursor.jsx",
+    "module": "features/visual-effects/components/StitchAICursor.jsx"
+  },
+  {
+    "source": "components/TechArchitecture.jsx",
+    "module": "features/landing/components/TechArchitecture.jsx"
+  },
+  {
+    "source": "components/TOCSection.jsx",
+    "module": "features/landing/components/TOCSection.jsx"
+  },
+  {
+    "source": "components/TopNavbar.jsx",
+    "module": "features/navigation/components/TopNavbar.jsx"
+  },
+  {
+    "source": "components/UserBlobAvatar.jsx",
+    "module": "features/mascot/components/UserBlobAvatar.jsx"
+  },
+  {
+    "source": "components/VedikaLabParticleBot.jsx",
+    "module": "features/mascot/components/VedikaLabParticleBot.jsx"
+  },
+  {
+    "source": "components/VedikaParticleBot.jsx",
+    "module": "features/mascot/components/VedikaParticleBot.jsx"
+  },
+  {
+    "source": "components/VideoAIExplainerCard.jsx",
+    "module": "features/video-tutor/components/VideoAIExplainerCard.jsx"
+  },
+  {
+    "source": "components/VideoPlayerWithAI.jsx",
+    "module": "features/video-tutor/components/VideoPlayerWithAI.jsx"
+  },
+  {
+    "source": "components/voice-tutor/UnifiedSidebar.jsx",
+    "module": "features/voice-tutor/components/UnifiedSidebar.jsx"
+  },
+  {
+    "source": "components/voice-tutor/VoiceAgentView.jsx",
+    "module": "features/voice-tutor/components/VoiceAgentView.jsx"
+  },
+  {
+    "source": "components/voice-tutor/VoiceChatMessages.jsx",
+    "module": "features/voice-tutor/components/VoiceChatMessages.jsx"
+  },
+  {
+    "source": "components/voice-tutor/VoiceRobotVisualizer.jsx",
+    "module": "features/voice-tutor/components/VoiceRobotVisualizer.jsx"
+  },
+  {
+    "source": "components/WavyLinesBackground.jsx",
+    "module": "features/visual-effects/components/WavyLinesBackground.jsx"
+  },
+  {
+    "source": "components/YouTubeTutorPanel.jsx",
+    "module": "features/video-tutor/components/YouTubeTutorPanel.jsx"
+  },
+  {
+    "source": "components/ZimCarousel3D.jsx",
+    "module": "features/shared-widgets/components/ZimCarousel3D.jsx"
+  },
+  {
+    "source": "app/admin/alerts/page.jsx",
+    "module": "features/administration/pages/admin/alerts/View.jsx"
+  },
+  {
+    "source": "app/admin/assignments/page.jsx",
+    "module": "features/assessments/pages/admin/assignments/View.jsx"
+  },
+  {
+    "source": "app/admin/batches/page.jsx",
+    "module": "features/cohorts/pages/admin/batches/View.jsx"
+  },
+  {
+    "source": "app/admin/certs/page.jsx",
+    "module": "features/administration/pages/admin/certs/View.jsx"
+  },
+  {
+    "source": "app/admin/code-ex/page.jsx",
+    "module": "features/administration/pages/admin/code-ex/View.jsx"
+  },
+  {
+    "source": "app/admin/courses/page.jsx",
+    "module": "features/courses/pages/admin/courses/View.jsx"
+  },
+  {
+    "source": "app/admin/courses/[id]/page.jsx",
+    "module": "features/courses/pages/admin/courses/id/View.jsx"
+  },
+  {
+    "source": "app/admin/jobs/page.jsx",
+    "module": "features/administration/pages/admin/jobs/View.jsx"
+  },
+  {
+    "source": "app/admin/page.jsx",
+    "module": "features/administration/pages/admin/View.jsx"
+  },
+  {
+    "source": "app/admin/quizzes/page.jsx",
+    "module": "features/assessments/pages/admin/quizzes/View.jsx"
+  },
+  {
+    "source": "app/admin/search/page.jsx",
+    "module": "features/administration/pages/admin/search/View.jsx"
+  },
+  {
+    "source": "app/admin/statistics/page.jsx",
+    "module": "features/administration/pages/admin/statistics/View.jsx"
+  },
+  {
+    "source": "app/auth/callback/page.js",
+    "module": "features/auth/pages/auth/callback/View.jsx"
+  },
+  {
+    "source": "app/courses/page.jsx",
+    "module": "features/landing/pages/courses/View.jsx"
+  },
+  {
+    "source": "app/jobs/page.jsx",
+    "module": "features/opportunities/pages/jobs/View.jsx"
+  },
+  {
+    "source": "app/lesson/[id]/page.jsx",
+    "module": "features/lessons/pages/lesson/id/View.jsx"
+  },
+  {
+    "source": "app/login/page.jsx",
+    "module": "features/auth/pages/login/View.jsx"
+  },
+  {
+    "source": "app/super-admin/login/page.jsx",
+    "module": "features/administration/pages/super-admin/login/View.jsx"
+  },
+  {
+    "source": "app/super-admin/page.jsx",
+    "module": "features/administration/pages/super-admin/View.jsx"
+  },
+  {
+    "source": "app/test-infographic-engine/page.jsx",
+    "module": "features/landing/pages/test-infographic-engine/View.jsx"
+  },
+  {
+    "source": "app/vedika-ai/page.jsx",
+    "module": "features/landing/pages/vedika-ai/View.jsx"
+  },
+  {
+    "source": "app/vedika-labs/page.jsx",
+    "module": "features/landing/pages/vedika-labs/View.jsx"
+  },
+  {
+    "source": "app/viva-interview/page.jsx",
+    "module": "features/viva-interview/pages/viva-interview/View.jsx"
+  },
+  {
+    "source": "app/api/admin/courses/import/route.js",
+    "module": "features/administration/server/routes/admin/courses/import/route.js"
+  },
+  {
+    "source": "app/api/auth/google/callback/route.js",
+    "module": "features/auth/server/routes/auth/google/callback/route.js"
+  },
+  {
+    "source": "app/api/auth/google/route.js",
+    "module": "features/auth/server/routes/auth/google/route.js"
+  },
+  {
+    "source": "app/api/auth/login/route.js",
+    "module": "features/auth/server/routes/auth/login/route.js"
+  },
+  {
+    "source": "app/api/auth/signup/route.js",
+    "module": "features/auth/server/routes/auth/signup/route.js"
+  },
+  {
+    "source": "app/api/auth/ws-token/route.js",
+    "module": "features/auth/server/routes/auth/ws-token/route.js"
+  },
+  {
+    "source": "app/api/categories/route.js",
+    "module": "features/courses/server/routes/categories/route.js"
+  },
+  {
+    "source": "app/api/code-puzzle/faculty/route.js",
+    "module": "features/code-puzzles/server/routes/code-puzzle/faculty/route.js"
+  },
+  {
+    "source": "app/api/code-puzzle/generate/route.js",
+    "module": "features/code-puzzles/server/routes/code-puzzle/generate/route.js"
+  },
+  {
+    "source": "app/api/code-puzzle/validate/route.js",
+    "module": "features/code-puzzles/server/routes/code-puzzle/validate/route.js"
+  },
+  {
+    "source": "app/api/documents/attach/route.js",
+    "module": "features/documents/server/routes/documents/attach/route.js"
+  },
+  {
+    "source": "app/api/documents/delete/route.js",
+    "module": "features/documents/server/routes/documents/delete/route.js"
+  },
+  {
+    "source": "app/api/documents/list/route.js",
+    "module": "features/documents/server/routes/documents/list/route.js"
+  },
+  {
+    "source": "app/api/documents/status-stream/route.js",
+    "module": "features/documents/server/routes/documents/status-stream/route.js"
+  },
+  {
+    "source": "app/api/documents/upload/route.js",
+    "module": "features/documents/server/routes/documents/upload/route.js"
+  },
+  {
+    "source": "app/api/evaluate-assignment/route.js",
+    "module": "features/assessments/server/routes/evaluate-assignment/route.js"
+  },
+  {
+    "source": "app/api/gemini/route.js",
+    "module": "features/tutoring/server/routes/gemini/route.js"
+  },
+  {
+    "source": "app/api/gemini/stream/route.js",
+    "module": "features/tutoring/server/routes/gemini/stream/route.js"
+  },
+  {
+    "source": "app/api/generate-aptitude/route.js",
+    "module": "features/tutoring/server/routes/generate-aptitude/route.js"
+  },
+  {
+    "source": "app/api/infographic/generate/route.js",
+    "module": "features/infographics/server/routes/infographic/generate/route.js"
+  },
+  {
+    "source": "app/api/labs/tutor/route.js",
+    "module": "features/labs/server/routes/labs/tutor/route.js"
+  },
+  {
+    "source": "app/api/mascot/bridge/route.js",
+    "module": "features/mascot/server/routes/mascot/bridge/route.js"
+  },
+  {
+    "source": "app/api/mascot/download/route.js",
+    "module": "features/mascot/server/routes/mascot/download/route.js"
+  },
+  {
+    "source": "app/api/memory/route.js",
+    "module": "features/tutoring/server/routes/memory/route.js"
+  },
+  {
+    "source": "app/api/method/[...segments]/route.js",
+    "module": "features/lms-gateway/server/routes/method/...segments/route.js"
+  },
+  {
+    "source": "app/api/phet-proxy/route.js",
+    "module": "features/labs/server/routes/phet-proxy/route.js"
+  },
+  {
+    "source": "app/api/progress/route.js",
+    "module": "features/progress/server/routes/progress/route.js"
+  },
+  {
+    "source": "app/api/resources/categories/route.js",
+    "module": "features/resources/server/routes/resources/categories/route.js"
+  },
+  {
+    "source": "app/api/resources/list/route.js",
+    "module": "features/resources/server/routes/resources/list/route.js"
+  },
+  {
+    "source": "app/api/state/[kind]/route.js",
+    "module": "features/administration/server/routes/state/kind/route.js"
+  },
+  {
+    "source": "app/api/super-admin/auth/me/route.js",
+    "module": "features/administration/server/routes/super-admin/auth/me/route.js"
+  },
+  {
+    "source": "app/api/super-admin/login/route.js",
+    "module": "features/administration/server/routes/super-admin/login/route.js"
+  },
+  {
+    "source": "app/api/super-admin/metrics/route.js",
+    "module": "features/administration/server/routes/super-admin/metrics/route.js"
+  },
+  {
+    "source": "app/api/super-admin/orgs/route.js",
+    "module": "features/administration/server/routes/super-admin/orgs/route.js"
+  },
+  {
+    "source": "app/api/super-admin/orgs/[id]/impersonate/route.js",
+    "module": "features/administration/server/routes/super-admin/orgs/id/impersonate/route.js"
+  },
+  {
+    "source": "app/api/super-admin/orgs/[id]/route.js",
+    "module": "features/administration/server/routes/super-admin/orgs/id/route.js"
+  },
+  {
+    "source": "app/api/temp-analyze/route.js",
+    "module": "features/tutoring/server/routes/temp-analyze/route.js"
+  },
+  {
+    "source": "app/api/tutor/chat/route.js",
+    "module": "features/tutoring/server/routes/tutor/chat/route.js"
+  },
+  {
+    "source": "app/api/tutor/chat/stream/route.js",
+    "module": "features/tutoring/server/routes/tutor/chat/stream/route.js"
+  },
+  {
+    "source": "app/api/tutor/history/route.js",
+    "module": "features/tutoring/server/routes/tutor/history/route.js"
+  },
+  {
+    "source": "app/api/viva-interview/route.js",
+    "module": "features/viva-interview/server/routes/viva-interview/route.js"
+  },
+  {
+    "source": "app/api/youtube/chat/route.js",
+    "module": "features/video-tutor/server/routes/youtube/chat/route.js"
+  },
+  {
+    "source": "app/api/youtube/explain/route.js",
+    "module": "features/video-tutor/server/routes/youtube/explain/route.js"
+  },
+  {
+    "source": "app/api/youtube/transcript/route.js",
+    "module": "features/video-tutor/server/routes/youtube/transcript/route.js"
+  },
+  {
+    "source": "lib/auth.js",
+    "module": "shared/auth/jwt.js"
+  },
+  {
+    "source": "lib/auth-passlib.js",
+    "module": "shared/auth/passwords.js"
+  },
+  {
+    "source": "lib/serverAuth.js",
+    "module": "shared/auth/server.js"
+  },
+  {
+    "source": "lib/jwtCache.js",
+    "module": "shared/auth/client-token.js"
+  },
+  {
+    "source": "lib/google-auth-config.js",
+    "module": "features/auth/server/google-config.js"
+  },
+  {
+    "source": "lib/b2.js",
+    "module": "integrations/storage/b2.js"
+  },
+  {
+    "source": "lib/r2.js",
+    "module": "integrations/storage/legacy-r2.js"
+  },
+  {
+    "source": "lib/cache.js",
+    "module": "shared/cache/responses.js"
+  },
+  {
+    "source": "lib/db.js",
+    "module": "shared/database/legacy.js"
+  },
+  {
+    "source": "lib/frappe-db.js",
+    "module": "integrations/frappe/database.js"
+  },
+  {
+    "source": "lib/gemini.js",
+    "module": "integrations/gemini/generate.js"
+  },
+  {
+    "source": "lib/keys.js",
+    "module": "integrations/gemini/keys.js"
+  },
+  {
+    "source": "lib/native-db.js",
+    "module": "integrations/native/database.js"
+  },
+  {
+    "source": "lib/native-lms.js",
+    "module": "integrations/native/lms.js"
+  },
+  {
+    "source": "lib/mascotBridge.js",
+    "module": "features/mascot/api/bridge.js"
+  },
+  {
+    "source": "lib/memory.js",
+    "module": "features/memory/server/store.js"
+  },
+  {
+    "source": "lib/organizations.js",
+    "module": "features/administration/server/organizations.js"
+  },
+  {
+    "source": "lib/phet-simulations.js",
+    "module": "features/labs/data/simulations.js"
+  },
+  {
+    "source": "lib/useMediaQuery.js",
+    "module": "shared/hooks/useMediaQuery.js"
+  },
+  {
+    "source": "hooks/usePyodide.js",
+    "module": "features/code-playground/hooks/usePyodide.js"
+  },
+  {
+    "source": "lib/artwork.js",
+    "module": "shared/design-system/artwork.js"
+  },
+  {
+    "source": "lib/infographicEngine.js",
+    "module": "features/infographics/domain/generate.js"
+  },
+  {
+    "source": "lib/all-cheatsheets.js",
+    "module": "features/resources/data/all-cheatsheets.js"
+  },
+  {
+    "source": "lib/infographic/animationSequence.js",
+    "module": "features/infographics/domain/animationSequence.js"
+  },
+  {
+    "source": "lib/infographic/client.js",
+    "module": "features/infographics/api/client.js"
+  },
+  {
+    "source": "lib/infographic/extractContent.js",
+    "module": "features/infographics/domain/extractContent.js"
+  },
+  {
+    "source": "lib/infographic/geminiPlanner.js",
+    "module": "features/infographics/server/geminiPlanner.js"
+  },
+  {
+    "source": "lib/infographic/prompts.js",
+    "module": "features/infographics/server/prompts.js"
+  },
+  {
+    "source": "lib/infographic/repairScene.js",
+    "module": "features/infographics/domain/repairScene.js"
+  },
+  {
+    "source": "lib/infographic/schema.js",
+    "module": "features/infographics/domain/schema.js"
+  },
+  {
+    "source": "lib/infographic/selectLayout.js",
+    "module": "features/infographics/domain/selectLayout.js"
+  },
+  {
+    "source": "lib/infographic/spatialEngine.js",
+    "module": "features/infographics/domain/spatialEngine.js"
+  },
+  {
+    "source": "lib/infographic/useDrawingSequence.js",
+    "module": "features/infographics/hooks/useDrawingSequence.js"
+  },
+  {
+    "source": "lib/infographic/validateScene.js",
+    "module": "features/infographics/domain/validateScene.js"
+  }
+]

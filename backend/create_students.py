@@ -87,7 +87,7 @@ permissions_to_grant = [
     ("LMS Quiz Question", "Guest", 1, 0, 0, 0),
     
     # LMS Quiz Submission
-    ("LMS Quiz Submission", "LMS Student", 1, 1, 1, 0),
+    ("LMS Quiz Submission", "LMS Student", 0, 0, 0, 0),
     
     # LMS Assignment
     ("LMS Assignment", "LMS Student", 1, 0, 0, 0),

@@ -25,9 +25,21 @@ def grant_permissions(doctype, role, perm_dict):
     frappe.db.commit()
     frappe.clear_cache(doctype=doctype)
 
-print("Configuring LMS Student permissions...")
-# LMS Student needs to read LMS Quiz and LMS Question, and submit quizzes
-grant_permissions("LMS Quiz", "LMS Student", {"read": 1, "write": 0, "create": 0})
-grant_permissions("LMS Question", "LMS Student", {"read": 1, "write": 0, "create": 0})
-grant_permissions("LMS Quiz Submission", "LMS Student", {"read": 1, "write": 1, "create": 1})
-print("LMS Student permissions successfully configured!")
+# Shared Vedika assessment routes own student access and grading. Direct Frappe
+# question/submission endpoints must not bypass those policies.
+from frappe.permissions import setup_custom_perms
+for doctype in ("LMS Quiz", "LMS Question", "LMS Quiz Submission", "LMS Assignment", "LMS Assignment Submission"):
+    if not frappe.db.exists("DocType", doctype):
+        continue
+    setup_custom_perms(doctype)
+    for role in ("Guest", "All", "Student", "LMS Student"):
+        if not frappe.db.exists("Role", role):
+            continue
+        for name in frappe.get_all("Custom DocPerm", filters={"parent": doctype, "role": role}, pluck="name"):
+            doc = frappe.get_doc("Custom DocPerm", name)
+            for field in ("read", "write", "create", "delete", "submit", "cancel", "amend", "report", "export", "import", "share", "print", "email"):
+                setattr(doc, field, 0)
+            doc.save(ignore_permissions=True)
+    frappe.clear_cache(doctype=doctype)
+frappe.db.commit()
+print("Direct student assessment permissions revoked; use Vedika assessment APIs.")

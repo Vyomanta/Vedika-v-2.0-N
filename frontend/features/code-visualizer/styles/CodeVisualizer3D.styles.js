@@ -1,0 +1,120 @@
+const styles = {
+  s0: {
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        minHeight: 250,
+        background: '#090d16',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      },
+  s1: { display: 'block', width: '100%', height: '100%' },
+  s2: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 },
+  s3: {
+                position: 'absolute',
+                display: 'none', // toggled to block by three.js tick loop once coordinates are projected
+                transform: 'translate(-50%, -100%)',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              },
+  s4: {
+                  background: '#0F172A',
+                  color: '#F8FAFC',
+                  fontFamily: 'monospace',
+                  fontSize: 11.5,
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: 5,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                },
+  s5: { display: 'flex', gap: 3, marginTop: 2 },
+  s6: {
+                position: 'absolute',
+                display: 'none',
+                transform: 'translate(-50%, -100%)',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              },
+  s7: {
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  color: '#38BDF8',
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: 5,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                  border: '1px solid rgba(56, 189, 248, 0.35)',
+                  backdropFilter: 'blur(4px)'
+                },
+  s8: {
+            position: 'absolute',
+            bottom: 12,
+            left: 12,
+            background: 'rgba(10, 15, 30, 0.85)',
+            backdropFilter: 'blur(16px)',
+            color: '#F8FAFC',
+            padding: '12px 16px',
+            borderRadius: 12,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            fontSize: 11.5,
+            fontFamily: 'monospace',
+            zIndex: 40,
+            minWidth: 200,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5
+          },
+  s9: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', paddingBottom: 6, marginBottom: 4 },
+  s10: { fontWeight: 800, color: '#38BDF8', letterSpacing: '0.04em' },
+  s11: {
+                background: 'transparent',
+                border: 'none',
+                color: '#8892B0',
+                cursor: 'pointer',
+                fontWeight: 800,
+                fontSize: 12,
+                padding: '0 2px'
+              },
+  s12: { color: '#FBBF24', fontWeight: 800 },
+  s13: { color: '#34D399', fontWeight: 800 },
+  s14: {
+            position: 'absolute',
+            top: 12,
+            right: 12,
+            width: 170,
+            maxHeight: 'calc(100% - 24px)',
+            background: 'rgba(10, 15, 30, 0.85)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: 12,
+            padding: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+            overflowY: 'auto',
+            zIndex: 20
+          },
+  s15: {
+            fontSize: 9.5,
+            color: '#8892B0',
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            paddingBottom: 6,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          },
+  s16: { color: '#6366F1' },
+  s17: { display: 'flex', flexDirection: 'column', gap: 6 },
+  s18: { fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: '#8892B0' }
+};
+export default styles;

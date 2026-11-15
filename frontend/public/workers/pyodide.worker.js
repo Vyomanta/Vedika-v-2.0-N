@@ -1,5 +1,4 @@
 // Background Worker for Pyodide Execution
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js');
 
 let pyodide = null;
 
@@ -9,6 +8,7 @@ let stdinBuffer = null;
 async function initPyodide() {
   if (pyodide) return;
   try {
+    importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js');
     pyodide = await loadPyodide({
       indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.1/full/',
       stdout: (text) => {

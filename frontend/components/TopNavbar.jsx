@@ -1,7 +1,4 @@
 'use client';
 
-import Header from './Header';
-
-export default function TopNavbar(props) {
-  return <Header {...props} />;
-}
+export { default } from '@/features/navigation/components/TopNavbar';
+export * from '@/features/navigation/components/TopNavbar';

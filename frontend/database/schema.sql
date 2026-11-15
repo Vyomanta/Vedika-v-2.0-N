@@ -4,11 +4,11 @@
 -- ==============================================================================
 
 -- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+
 
 -- Optional: Vector extension for RAG embeddings (supported by Neon & Supabase)
-CREATE EXTENSION IF NOT EXISTS vector;
+
 
 -- 1. USERS & RBAC
 CREATE TABLE IF NOT EXISTS users (

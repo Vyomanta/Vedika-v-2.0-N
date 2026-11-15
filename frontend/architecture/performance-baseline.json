@@ -1,0 +1,13 @@
+{
+  "measurement": "gzip bytes of JavaScript script tags in prerendered HTML, same algorithm for both builds",
+  "original_framework": "Next.js 14.2.35",
+  "original_kb_approx": {
+    "/": 322.5,
+    "/coding-tutor": 544.6,
+    "/code-puzzle": 501.5,
+    "/general-tutor": 387.8,
+    "/quizzes": 234.7,
+    "/viva-interview": 324.7
+  },
+  "budget_policy": "Allow at most about 5% above the original same-metric payload while moving to a patched framework; reductions are expected from deferred optional tools. This is not field Core Web Vitals."
+}

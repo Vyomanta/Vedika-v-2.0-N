@@ -1,0 +1,24 @@
+
+                .cm-editor, .cm-editor .cm-scroller, .cm-editor .cm-content {
+                  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', Menlo, Monaco, Consolas, monospace !important;
+                  font-feature-settings: "calt" 1, "liga" 1;
+                }
+                /* Subtle 4-space indentation guide markings for students */
+                .cm-editor .cm-line {
+                  background-image: repeating-linear-gradient(
+                    to right,
+                    transparent 0,
+                    transparent calc(4ch - 1px),
+                    rgba(148, 163, 184, 0.14) calc(4ch - 1px),
+                    rgba(148, 163, 184, 0.14) 4ch
+                  );
+                  background-size: 16ch 100%;
+                  background-repeat: no-repeat;
+                }
+                .cm-editor .cm-activeLine {
+                  background-color: rgba(168, 85, 247, 0.07) !important;
+                }
+                .guide-wizard-panel {
+                  font-family: 'Plus Jakarta Sans', var(--font-outfit), 'Inter', -apple-system, sans-serif !important;
+                }
+              

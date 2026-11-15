@@ -1,3 +1,4 @@
+const { scopedSession, scopedUser } = require('./shared/auth/identity.cjs');
 const http = require('http');
 const { WebSocketServer } = require('ws');
 const { GoogleGenAI, Modality } = require('@google/genai');
@@ -86,53 +87,8 @@ const wss = new WebSocketServer({ server, path: '/api/ws' });
 
 const crypto = require('crypto');
 
-async function validateWsAuth(searchParams, cookieHeader) {
-  const ticket = searchParams.get('ticket');
-  if (ticket && redis) {
-    try {
-      const raw = await redis.get(`ws_ticket:${ticket}`);
-      if (raw) {
-        await redis.del(`ws_ticket:${ticket}`);
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        return { valid: true, user: parsed.user_id, sessionId: parsed.session_id };
-      }
-    } catch (e) {
-      console.warn('[VoiceWS Auth] Ticket verification failed:', e.message);
-    }
-  }
-
-  let token = searchParams.get('token');
-  if (!token && cookieHeader) {
-    const match = cookieHeader.match(/(?:jwt|token)=([^;]+)/);
-    if (match) token = match[1];
-  }
-
-  if (token) {
-    try {
-      const secret = process.env.JWT_SECRET || process.env.ENCRYPTION_KEY;
-      if (secret) {
-        const parts = token.replace(/^Bearer\s+/i, '').split('.');
-        if (parts.length === 3) {
-          const expectedSig = crypto.createHmac('sha256', secret)
-            .update(`${parts[0]}.${parts[1]}`, 'utf8')
-            .digest('base64url');
-          if (parts[2].length === expectedSig.length && crypto.timingSafeEqual(Buffer.from(parts[2]), Buffer.from(expectedSig))) {
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-            const now = Math.floor(Date.now() / 1000);
-            if (!payload.exp || payload.exp >= now) {
-              return { valid: true, user: payload.user_id || payload.email, sessionId: searchParams.get('sessionId') };
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[VoiceWS Auth] Token verification failed:', e.message);
-    }
-  }
-
-  // Security fix (VDK-CONF-01): Strictly reject unauthenticated connections
-  return { valid: false };
-}
+const { createWsAuthenticator } = require('./features/voice-tutor/server/auth.cjs');
+const validateWsAuth = createWsAuthenticator(redis);
 
 wss.on('connection', async (clientWs, request) => {
   console.log('[VoiceWS] Client connected');
@@ -222,8 +178,8 @@ wss.on('connection', async (clientWs, request) => {
   }
 
   const sessionId = searchParams.get('sessionId');
-  const userId = searchParams.get('userId');
-  const memoryCtx = await loadMemoryContext(sessionId, userId);
+  const userId = auth.user;
+  const memoryCtx = await loadMemoryContext(scopedSession(auth.tenantId || 'default', userId, sessionId, auth.backend), scopedUser(auth.tenantId || 'default',userId,auth.backend));
   if (memoryCtx) systemInstruction += memoryCtx;
 
   let geminiSession = null;

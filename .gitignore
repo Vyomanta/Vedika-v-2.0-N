@@ -38,8 +38,8 @@ infographics-template/output/
 # Local logs and debug files
 frontend/lib/api_consumption.json
 *.log
-logs/
-sites/*/logs/
+/logs/
+sites/*//logs/
 
 # Python / Virtual Envs
 __pycache__/
@@ -69,7 +69,7 @@ backend/frappe-bench-data/
 backend/.env
 backup.sql
 *.sql
-!frontend/database/schema.sql
+!frontend/database/**/*.sql
 
 # Local scratch files & developer scripts
 payload.json
@@ -85,7 +85,6 @@ frontend/oauth_source.py
 frontend/scratch_test.js
 frontend/seed_google_oauth.js
 frontend/simulate_oauth.py
-docs/
 
 # AI Agent logs & context
 .gemini/
@@ -99,3 +98,19 @@ responsive-test-result/
 
 vedika-2.0/
 !frontend/database/*.sql
+!frontend/database/**/*.sql
+
+# Secrets and local deployment files, at any depth
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+.vercel/
+playwright-report/
+test-results/
+
+/frontend/lib/organizations_data.json
+**/user_profile.json
+

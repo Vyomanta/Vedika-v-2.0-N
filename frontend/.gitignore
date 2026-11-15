@@ -51,3 +51,7 @@ vite.config.js
 index.html
 src/
 lms-demo.jsx
+
+/lint-results.json
+
+/audit-results.json

@@ -58,23 +58,9 @@ def get_rotated_key(attempt):
     return API_KEYS[attempt % len(API_KEYS)]
 
 def get_db_connection():
-    ssl_config = None
-    if os.environ.get("DB_SSL") == "true":
-        ca_path = '/etc/ssl/certs/ca-certificates.crt'
-        if os.path.exists(ca_path):
-            ssl_config = {'ca': ca_path}
-        else:
-            ssl_config = {'check_hostname': False}
-        
-    return pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        ssl=ssl_config,
-        autocommit=True
-    )
+    from database_connection import connect
+    return connect()
+
 
 def publish_status(document_id, status, error_message=None):
     if not UPSTASH_REDIS_REST_URL or not UPSTASH_REDIS_REST_TOKEN:
@@ -439,7 +425,7 @@ def process_job_outside(conn, job):
             
             # Complete Job
             cursor.execute(
-                "UPDATE `LMS Background Job Queue` SET status = 'completed' WHERE id = %s",
+                "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'completed' WHERE id = %s",
                 (job_id,)
             )
             cursor.execute(
@@ -459,7 +445,7 @@ def process_job_outside(conn, job):
                 conn.begin()
                 if attempts + 1 >= job["max_attempts"]:
                     cursor.execute(
-                        "UPDATE `LMS Background Job Queue` SET status = 'failed', error_message = %s WHERE id = %s",
+                        "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'failed', error_message = %s WHERE id = %s",
                         (err_msg, job_id)
                     )
                     cursor.execute(
@@ -470,7 +456,7 @@ def process_job_outside(conn, job):
                     publish_status(doc_id, "failed", err_msg)
                 else:
                     cursor.execute(
-                        "UPDATE `LMS Background Job Queue` SET status = 'queued', error_message = %s WHERE id = %s",
+                        "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'queued', error_message = %s WHERE id = %s",
                         (err_msg, job_id)
                     )
                     conn.commit()
@@ -511,7 +497,7 @@ def run_reaper(conn):
                 
                 if attempts >= max_attempts:
                     cursor.execute(
-                        "UPDATE `LMS Background Job Queue` SET status = 'failed', error_message = 'Job timed out in running state' WHERE id = %s",
+                        "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'failed', error_message = 'Job timed out in running state' WHERE id = %s",
                         (job_id,)
                     )
                     cursor.execute(
@@ -522,7 +508,7 @@ def run_reaper(conn):
                     print(f"Reaper: Job {job_id} exceeded max attempts. Marked as failed.")
                 else:
                     cursor.execute(
-                        "UPDATE `LMS Background Job Queue` SET status = 'queued', error_message = 'Job timed out in running state, resetting to queue' WHERE id = %s",
+                        "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'queued', error_message = 'Job timed out in running state, resetting to queue' WHERE id = %s",
                         (job_id,)
                     )
                     cursor.execute(
@@ -580,7 +566,7 @@ def main():
                             
                             # Mark job as running and commit immediately to release lock
                             cursor.execute(
-                                "UPDATE `LMS Background Job Queue` SET status = 'running', attempts = attempts + 1 WHERE id = %s",
+                                "UPDATE `LMS Background Job Queue` SET updated_at = CURRENT_TIMESTAMP, status = 'running', attempts = attempts + 1 WHERE id = %s",
                                 (job_id,)
                             )
                             cursor.execute(

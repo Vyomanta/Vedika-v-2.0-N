@@ -1,0 +1,25 @@
+# courses
+
+Owned implementation files are listed below. Existing imports under components/ and lib/ are compatibility facades. Backend-specific code belongs in integrations or server repositories.
+
+- [api/client.js](api/client.js)
+- [api/lms.js](api/lms.js)
+- [components/CourseEmotionsSlider.jsx](components/CourseEmotionsSlider.jsx)
+- [components/CourseInteractiveCanvas.jsx](components/CourseInteractiveCanvas.jsx)
+- [components/CoursePage.jsx](components/CoursePage.jsx)
+- [domain/course-data.js](domain/course-data.js)
+- [hooks/features-courses-pages-admin-courses-View.jsx](hooks/features-courses-pages-admin-courses-View.jsx)
+- [pages/admin/courses/View.jsx](pages/admin/courses/View.jsx)
+- [pages/admin/courses/id/View.jsx](pages/admin/courses/id/View.jsx)
+- [server/provider.js](server/provider.js)
+- [server/routes/categories/route.js](server/routes/categories/route.js)
+- [styles/CourseEmotionsSlider.113e9da8.styles.js](styles/CourseEmotionsSlider.113e9da8.styles.js)
+- [styles/CourseEmotionsSlider.styles.js](styles/CourseEmotionsSlider.styles.js)
+- [styles/CourseInteractiveCanvas.115c9177.styles.js](styles/CourseInteractiveCanvas.115c9177.styles.js)
+- [styles/CourseInteractiveCanvas.styles.js](styles/CourseInteractiveCanvas.styles.js)
+- [styles/CoursePage.cdc9e805.styles.js](styles/CoursePage.cdc9e805.styles.js)
+- [styles/CoursePage.styles.js](styles/CoursePage.styles.js)
+- [styles/View.c9d27d34.styles.js](styles/View.c9d27d34.styles.js)
+- [styles/View.e8922216.styles.js](styles/View.e8922216.styles.js)
+- [styles/admin-courses-id-page.jsx.styles.js](styles/admin-courses-id-page.jsx.styles.js)
+- [styles/admin-courses-page.jsx.styles.js](styles/admin-courses-page.jsx.styles.js)

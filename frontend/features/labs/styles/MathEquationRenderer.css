@@ -1,0 +1,25 @@
+
+        .katex, .katex * {
+          color: inherit !important;
+        }
+        .katex .katex-html {
+          color: inherit !important;
+          max-width: 100%;
+        }
+        .katex-display {
+          margin: 12px 0 !important;
+          color: inherit !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          max-width: 100% !important;
+          padding: 8px 4px !important;
+        }
+        .katex .sqrt > .svg-align {
+          max-width: 100% !important;
+        }
+        .katex-error {
+          color: inherit !important;
+          border-bottom: none !important;
+          background: transparent !important;
+        }
+      

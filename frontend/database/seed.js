@@ -1,3 +1,4 @@
+if (!process.env.SEED_ADMIN_PASSWORD || !process.env.SEED_STUDENT_PASSWORD) { throw new Error('Set explicit SEED_ADMIN_PASSWORD and SEED_STUDENT_PASSWORD before seeding development accounts.'); }
 // database/seed.js
 const { Pool } = require('pg');
 const fs = require('fs');
@@ -17,7 +18,7 @@ if (!connectionString) {
 const isLocalhost = connectionString.includes('localhost') || connectionString.includes('127.0.0.1');
 const pool = new Pool({
   connectionString,
-  ssl: isLocalhost ? false : { rejectUnauthorized: false }
+  // Certificate verification uses the provider connection string.
 });
 
 const DEFAULT_COURSES = [
@@ -128,8 +129,8 @@ async function seed() {
     console.log('✅ Schema created successfully.');
 
     console.log('🌱 Seeding demo users...');
-    const adminHash = await bcrypt.hash('admin123', 10);
-    const studentHash = await bcrypt.hash('student123', 10);
+    const adminHash = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD, 10);
+    const studentHash = await bcrypt.hash(process.env.SEED_STUDENT_PASSWORD, 10);
 
     const adminUser = await client.query(`
       INSERT INTO users (email, password_hash, full_name, role)

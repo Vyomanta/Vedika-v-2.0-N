@@ -1,0 +1,2792 @@
+'use client';
+import * as featureStyleFunctions from '@/features/coding-tutor/styles/CodingTutor.ac21d88c.styles.js';
+
+import inlineStyles from '@/features/coding-tutor/styles/CodingTutor.styles';
+import '@/features/coding-tutor/styles/CodingTutor.css';
+
+
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+const CodeMirror = dynamic(() => import('@uiw/react-codemirror'), { ssr: false });
+import { python } from '@codemirror/lang-python';
+import {
+  Code2, Loader2, ChevronRight, ChevronDown, Lock, FlipHorizontal,
+  Paperclip, Mic, Image, HelpCircle, Send, AlignLeft, Sparkles, ChevronLeft,
+  BookOpen, BarChart3, Home, Zap, Brain, Award, FileText, FolderOpen, Briefcase,
+  Trash, X, History, Plus, Search, PanelLeft, Type, Waves
+} from 'lucide-react';
+import { T, getTheme, setTheme } from '@/shared/design-system/theme';
+import { geminiCall } from '@/features/tutoring/api/gemini';
+import { classifyIntent, evaluateMath, getGreetingResponse, getThanksResponse, detectPromptInjection } from '@/features/tutoring/domain/intents';
+import { buildChatPrompt, buildFeaturePrompt, CODING_TUTOR_SYSTEM, TUTOR_SYSTEM, QUIZ_SYSTEM, FLASHCARD_SYSTEM, INFOGRAPHIC_SYSTEM, SIMPLER_SYSTEM, EXAMPLES_SYSTEM, BUG_ANALYSIS_SYSTEM, BUG_TIPS_SYSTEM, BUG_FIX_METHODS_SYSTEM, FIX_EXPLANATION_SYSTEM, SOCRATIC_HELP_SYSTEM, MODE_INSTRUCTIONS, LENGTH_INSTRUCTIONS, MAX_TOKENS } from '@/features/tutoring/domain/prompts';
+import { parseQuizOutput, parseFlashcardsOutput, parseInfographicOutput } from '@/features/tutoring/domain/parsers';
+import { generateInfographic } from '@/lib/infographicEngine';
+const VoiceAgentView = dynamic(() => import('@/components/voice-tutor/VoiceAgentView'), { ssr: false });
+const MermaidDiagram = dynamic(() => import('@/components/MermaidDiagram'), { ssr: false });
+const InfographicCanvas = dynamic(() => import('@/components/infographic/InfographicCanvas').then(module => module.InfographicCanvas), { ssr: false });
+import { generateDynamicInfographic } from '@/lib/infographic/client';
+import { getJwtToken } from '@/lib/jwtCache';
+import MobileNav from '@/components/MobileNav';
+import { useMediaQuery, isMobileMQ } from '@/lib/useMediaQuery';
+import GlacierBackground from '@/components/GlacierBackground';
+import UserBlobAvatar from '@/components/UserBlobAvatar';
+import dynamic from 'next/dynamic';
+
+const Playground = dynamic(() => import('@/components/Playground'), { ssr: false });
+
+const MODES = ['Beginner', 'Exam', 'Interview', 'Revision'];
+const LENGTHS = ['Short', 'Medium', 'Deep'];
+const modeColors = { Beginner: T.green, Exam: T.accent, Interview: T.amber, Revision: T.purple };
+
+const NAV = [
+  { id: '/',              Icon: Home,          label: 'Dashboard'     },
+  { id: '/courses',       Icon: BookOpen,      label: 'Courses'       },
+  { id: '/quizzes',       Icon: Award,         label: 'Quizzes'       },
+  { id: '/assignments',   Icon: FileText,      label: 'Assignments'   },
+  { id: '/resources',     Icon: FolderOpen,    label: 'Resources'     },
+  { id: '/general-tutor', Icon: Brain,         label: 'Ask your AI Tutor' },
+  { id: '/coding-tutor',  Icon: Code2,         label: 'Code with AI Tutor'  },
+  { id: '/jobs',          Icon: Briefcase,     label: 'Jobs'          },
+  { id: '/progress',      Icon: BarChart3,     label: 'Progress'      },
+];
+
+const SUGGESTIONS = [
+  { id: 'quiz', label: 'Coding Quiz', Icon: HelpCircle, color: T.accent },
+  { id: 'flashcards', label: 'Flashcards', Icon: FlipHorizontal, color: T.purple },
+  { id: 'infographic', label: 'Visual Summary', Icon: Image, color: T.amber },
+  { id: 'simpler', label: 'Explain Simpler', Icon: AlignLeft, color: T.green },
+  { id: 'examples', label: 'Code Examples', Icon: Sparkles, color: T.accent },
+];
+
+const FEATURE_SYSTEMS = {
+  quiz: QUIZ_SYSTEM, flashcards: FLASHCARD_SYSTEM, infographic: INFOGRAPHIC_SYSTEM,
+  simpler: SIMPLER_SYSTEM, examples: EXAMPLES_SYSTEM,
+};
+
+const FEATURE_LABELS = {
+  quiz: 'Coding Quiz', flashcards: 'Flashcards', infographic: 'Visual Summary',
+  simpler: 'Simplified Explanation', examples: 'Code Examples',
+};
+
+const MENTION_OPTIONS = [
+  { id: 'analyze', name: 'analyze', label: 'Code Analysis & Complexity', desc: 'Detect bugs and estimate time/space Big O complexity', icon: '🔍', color: '#5B8CF8' },
+  { id: 'tips', name: 'tips', label: 'Bug Correction Tips', desc: 'Hints & correction tips without giving direct solutions', icon: '💡', color: '#22C5A0' },
+  { id: 'fix', name: 'fix', label: 'Bug Fixing Methods', desc: 'Possible fixing strategies & algorithms to resolve bugs', icon: '🛠️', color: '#9B6EF8' },
+  { id: 'explain', name: 'explain', label: 'Why It Works', desc: 'Theoretical explanation of why these fixes work', icon: '📖', color: '#F5A95B' },
+  { id: 'help', name: 'help', label: 'Interactive Guide', desc: 'Step-by-step Socratic helper guiding you to fix it', icon: '🤝', color: '#F55B6B' }
+];
+
+function parseAnalyticsFromMessage(msg) {
+  if (!msg || msg.role !== 'ai' || !msg.content) return null;
+  if (msg.analytics) return msg.analytics;
+  const analyticsRegex = /<analytics>([\s\S]*?)<\/analytics>/i;
+  const match = msg.content.match(analyticsRegex);
+  if (match) {
+    try {
+      return JSON.parse(match[1].trim());
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function renderAnalyticsCard(analytics) {
+  if (!analytics) return null;
+  const { timeComplexity, spaceComplexity, bugSeverity, optimizeScope, bugCount, dsaConcepts } = analytics;
+  
+  const getSeverityColor = (sev) => {
+    const s = String(sev).toLowerCase();
+    if (s === 'high') return T.red;
+    if (s === 'medium') return T.amber;
+    if (s === 'low') return T.accent;
+    return T.green;
+  };
+  
+  const getOptimizeColor = (opt) => {
+    const o = String(opt).toLowerCase();
+    if (o === 'high') return T.amber;
+    if (o === 'medium') return T.accent;
+    if (o === 'low') return T.purple;
+    return T.green;
+  };
+
+  const sevColor = getSeverityColor(bugSeverity);
+  const optColor = getOptimizeColor(optimizeScope);
+
+  return (
+    <div style={featureStyleFunctions.s0({T})}>
+      <div style={featureStyleFunctions.s1({T})}>
+        <div style={inlineStyles.s0}>
+          <span style={inlineStyles.s1}>📊</span>
+          <span style={featureStyleFunctions.s2({T})}>
+            Code Analysis Metrics
+          </span>
+        </div>
+        {bugCount !== undefined && (
+          <div style={featureStyleFunctions.s3({bugCount,T})}>
+            {bugCount > 0 ? `${bugCount} Bugs Detected` : 'No Bugs Detected'}
+          </div>
+        )}
+      </div>
+
+      <div style={inlineStyles.s2}>
+        <div style={featureStyleFunctions.s4({T})}>
+          <div style={featureStyleFunctions.s5({T})}>Time Complexity</div>
+          <div style={featureStyleFunctions.s6({T})}>{timeComplexity || 'N/A'}</div>
+        </div>
+        
+        <div style={featureStyleFunctions.s7({T})}>
+          <div style={featureStyleFunctions.s8({T})}>Space Complexity</div>
+          <div style={featureStyleFunctions.s9({T})}>{spaceComplexity || 'N/A'}</div>
+        </div>
+
+        <div style={featureStyleFunctions.s10({T})}>
+          <div style={featureStyleFunctions.s11({T})}>Bug Severity</div>
+          <div style={featureStyleFunctions.s12({sevColor})}>{bugSeverity || 'None'}</div>
+        </div>
+
+        <div style={featureStyleFunctions.s13({T})}>
+          <div style={featureStyleFunctions.s14({T})}>Optimize Scope</div>
+          <div style={featureStyleFunctions.s15({optColor})}>{optimizeScope || 'None'}</div>
+        </div>
+      </div>
+
+      {dsaConcepts && dsaConcepts.length > 0 && (
+        <div style={inlineStyles.s3}>
+          <span style={featureStyleFunctions.s16({T})}>DSA Concepts:</span>
+          {dsaConcepts.map((concept, idx) => (
+            <span key={concept + idx} style={featureStyleFunctions.s17({T})}>
+              {concept}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const cleanMarkdown = (text) => {
+  if (!text) return '';
+  return text
+    .replace(/\*\*\s+([^*]+?)\s+\*\*/g, '**$1**')
+    .replace(/\*\*\s+([^*]+?)\*\*/g, '**$1**')
+    .replace(/\*\*([^*]+?)\s+\*\*/g, '**$1**');
+};
+
+export default function CodingTutor() {
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const [topic, setTopic] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [isJustSent, setIsJustSent] = useState(false);
+  const typingTimerRef = useRef(null);
+  const [mode, setMode] = useState('Beginner');
+  const [length, setLength] = useState('Short');
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [generating, setGenerating] = useState({ msgIdx: null, type: null });
+  const [streamingText, setStreamingText] = useState('');
+  const streamElRef = useRef(null);
+  
+  const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
+  const [textSessions, setTextSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [activeTab, setActiveTab] = useState('text'); // 'text' or 'voice'
+  const [voiceSessionToRestore, setVoiceSessionToRestore] = useState(null);
+  const [historySearch, setHistorySearch] = useState('');
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // FeralUI Fluid Background Themes: 'aurora' (Northern lights), 'glacier' (Deep Ocean), 'pastel' (Opal)
+  const BG_THEMES = useMemo(() => [
+    {
+      id: 'aurora',
+      name: 'Aurora Flow',
+      shortLabel: 'Aurora',
+      emoji: '🌌',
+      desc: 'Ghost light · Luminous Ray & Night Sky',
+      gradient: 'linear-gradient(135deg, #F4F8FF 0%, #BFD4EE 35%, #5C749A 65%, #232E4A 100%)',
+      color: '#BFD4EE',
+      border: 'rgba(191, 212, 238, 0.5)',
+      bg: 'rgba(191, 212, 238, 0.12)'
+    },
+    {
+      id: 'glacier',
+      name: 'Glacier Flow',
+      shortLabel: 'Glacier',
+      emoji: '❄️',
+      desc: 'Deep Ocean · Lapis & Hanada',
+      gradient: 'linear-gradient(135deg, #65BED0 0%, #277EA3 50%, #183F60 100%)',
+      color: '#65BED0',
+      border: 'rgba(101, 190, 208, 0.45)',
+      bg: 'rgba(101, 190, 208, 0.12)'
+    },
+    {
+      id: 'pastel',
+      name: 'Pastel Flow',
+      shortLabel: 'Pastel',
+      emoji: '🌸',
+      desc: 'Opal · Lavender & Sakura Pink',
+      gradient: 'linear-gradient(135deg, #9BE0E8 0%, #C4B5F7 50%, #F8B8D9 100%)',
+      color: '#D8B4FE',
+      border: 'rgba(192, 132, 252, 0.45)',
+      bg: 'rgba(192, 132, 252, 0.12)'
+    },
+    {
+      id: 'waves',
+      name: 'Cyber Waves',
+      shortLabel: 'Waves',
+      emoji: '🌊',
+      desc: 'Cybernetic Neon Waves · Slow Flowing Ribbon',
+      gradient: 'linear-gradient(135deg, #14B1AB 0%, #F9D56E 50%, #E8505B 100%)',
+      color: '#14B1AB',
+      border: 'rgba(20, 177, 171, 0.45)',
+      bg: 'rgba(20, 177, 171, 0.12)'
+    },
+    {
+      id: 'black',
+      name: 'Complete Black',
+      shortLabel: 'Black',
+      emoji: '⬛',
+      desc: 'Complete Black · Minimalist & Distraction-Free',
+      gradient: 'linear-gradient(135deg, #000000 0%, #080808 50%, #000000 100%)',
+      color: '#CBD5E1',
+      border: 'rgba(255, 255, 255, 0.25)',
+      bg: 'rgba(255, 255, 255, 0.08)'
+    }
+  ], []);
+
+  const [bgTheme, setBgTheme] = useState('aurora');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('vedika_tutor_bg_theme');
+      if (saved === 'aurora' || saved === 'glacier' || saved === 'pastel' || saved === 'waves' || saved === 'black' || saved === 'pure-black') {
+        setBgTheme(saved === 'pure-black' ? 'black' : saved);
+      }
+    }
+  }, []);
+
+  const selectBgTheme = (themeId) => {
+    setBgTheme(themeId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('vedika_tutor_bg_theme', themeId);
+    }
+  };
+
+  const activeThemeConfig = BG_THEMES.find(t => t.id === bgTheme) || BG_THEMES[0];
+
+  // Floating Glassmorphic Left Page Navbar state & shortcut
+  const [showLeftNav, setShowLeftNav] = useState(false);
+  const [leftNavView, setLeftNavView] = useState('menu'); // 'menu' | 'history'
+  const leftNavRef = useRef(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('frappe_user');
+        if (stored) setCurrentUser(JSON.parse(stored));
+      } catch (e) {}
+    }
+  }, []);
+
+  const userInitials = (currentUser?.name || currentUser?.full_name || 'Aarav')
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'AM';
+  const userName = currentUser?.name?.split(' ')[0] || currentUser?.full_name?.split(' ')[0] || 'Aarav';
+
+  // Global Keyboard Shortcut: Ctrl+B or Cmd+B toggles Left Page Navbar, Escape closes it
+  useEffect(() => {
+    const handleKeyShortcut = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        setShowLeftNav(prev => {
+          if (!prev) setLeftNavView('menu');
+          return !prev;
+        });
+      } else if (e.key === 'Escape' && showLeftNav) {
+        setShowLeftNav(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyShortcut);
+    return () => window.removeEventListener('keydown', handleKeyShortcut);
+  }, [showLeftNav]);
+
+  // Click outside listener for Left Page Navbar
+  useEffect(() => {
+    const handleLeftNavOutside = (e) => {
+      if (
+        leftNavRef.current &&
+        !leftNavRef.current.contains(e.target) &&
+        !e.target.closest('[data-leftnav-toggle]')
+      ) {
+        setShowLeftNav(false);
+      }
+    };
+    if (showLeftNav) {
+      document.addEventListener('mousedown', handleLeftNavOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleLeftNavOutside);
+    };
+  }, [showLeftNav]);
+  
+  const [jwtToken, setJwtToken] = useState(null);
+  const [authenticating, setAuthenticating] = useState(true);
+  const [sessionDocs, setSessionDocs] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+  const fileInputRef = useRef(null);
+  const sessionDocsRef = useRef([]);
+
+  useEffect(() => {
+    sessionDocsRef.current = sessionDocs;
+  }, [sessionDocs]);
+
+  useEffect(() => {
+    const fetchJwt = async () => {
+      try {
+        const token = await getJwtToken();
+        setJwtToken(token);
+        console.warn("[CodingTutor] Successfully retrieved JWT token.");
+      } catch (e) {
+        console.error("Failed to load JWT token:", e);
+      } finally {
+        setAuthenticating(false);
+      }
+    };
+    fetchJwt();
+  }, []);
+  
+  const chatRef = useRef(null);
+  const inputRef = useRef(null);
+  
+  const [codeOverride, setCodeOverride] = useState(null);
+  const [explanationOverride, setExplanationOverride] = useState(null);
+
+  const [currentSandboxCode, setCurrentSandboxCode] = useState('');
+  const [showMentionDropdown, setShowMentionDropdown] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [availableDocs, setAvailableDocs] = useState([]);
+
+  const fetchAvailableDocs = useCallback(async () => {
+    if (!jwtToken) return;
+    const sid = currentSessionId || '';
+    try {
+      const res = await fetch(`/api/documents/list?sessionId=${sid}`, {
+        headers: {
+          'Authorization': `Bearer ${jwtToken}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableDocs(data.documents || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch available docs:", e);
+    }
+  }, [jwtToken, currentSessionId]);
+
+  useEffect(() => {
+    if (jwtToken) {
+      fetchAvailableDocs();
+    }
+  }, [jwtToken, fetchAvailableDocs]);
+
+  const filteredMentions = useMemo(() => {
+    const query = mentionSearch.toLowerCase();
+    const matchedCommands = MENTION_OPTIONS.filter(opt =>
+      opt.name.startsWith(query)
+    ).map(opt => ({ ...opt, isCommand: true }));
+
+    const matchedDocs = availableDocs.filter(d =>
+      d.name.toLowerCase().includes(query)
+    ).map(d => ({
+      id: d.id,
+      name: d.name,
+      file_key: d.file_key,
+      label: d.name,
+      desc: `PDF document uploaded on ${new Date(d.creation).toLocaleDateString()}`,
+      icon: '📄',
+      color: T.purple,
+      isDoc: true
+    }));
+
+    return [...matchedCommands, ...matchedDocs];
+  }, [mentionSearch, availableDocs]);
+
+  const handleAttachDoc = async (doc) => {
+    const sid = currentSessionId || Date.now().toString(36);
+    if (!currentSessionId) setCurrentSessionId(sid);
+    
+    setUploading(true);
+    setUploadErr('');
+    setShowMentionDropdown(false);
+    
+    try {
+      const res = await fetch('/api/documents/attach', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify({
+          file_name: doc.name,
+          file_key: doc.file_key,
+          sessionId: sid
+        })
+      });
+      
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to attach document');
+      }
+      
+      const data = await res.json();
+      const newDoc = { id: data.documentId, name: doc.name, status: data.status };
+      
+      setSessionDocs(prev => {
+        const updated = [...prev, newDoc];
+        setTimeout(() => saveSession(messages, sid), 100);
+        return updated;
+      });
+      
+      if (inputRef.current) {
+        const val = topic;
+        const selectionStart = inputRef.current.selectionStart;
+        const textBeforeCursor = val.slice(0, selectionStart);
+        const atIndex = textBeforeCursor.lastIndexOf('@');
+        if (atIndex !== -1) {
+          const newVal = val.slice(0, atIndex) + val.slice(selectionStart);
+          setTopic(newVal);
+          setTimeout(() => {
+            inputRef.current.focus();
+            inputRef.current.selectionStart = atIndex;
+            inputRef.current.selectionEnd = atIndex;
+          }, 50);
+        }
+      }
+    } catch (e) {
+      console.error("Attach error:", e);
+      setUploadErr(e.message || 'Error attaching document');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSelectMention = (option) => {
+    if (option.isDoc) {
+      handleAttachDoc(option);
+      return;
+    }
+    
+    const textBefore = topic.slice(0, topic.lastIndexOf('@'));
+    const newText = `${textBefore}@${option.name} `;
+    setTopic(newText);
+    setShowMentionDropdown(false);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleVisualizeCode = (codeText, explanationText) => {
+    setIsPlaygroundOpen(true);
+    setCodeOverride(codeText);
+    setExplanationOverride(explanationText || '');
+  };
+
+  const renderMarkdown = (content, explanation = '') => {
+    const cleaned = cleanMarkdown(content);
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          pre({ node, children }) {
+            return <div style={inlineStyles.s4}>{children}</div>;
+          },
+          code({ node, inline, className, children, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+            const isPython = match && match[1] === 'python';
+            const codeVal = String(children).replace(/\n$/, '');
+
+            if (!inline && isPython) {
+              return (
+                <div style={inlineStyles.s5}>
+                  {mounted ? (
+                    <CodeMirror
+                      value={codeVal}
+                      theme="dark"
+                      className="tutor-code-block"
+                      extensions={[python()]}
+                      readOnly={true}
+                      basicSetup={{
+                        lineNumbers: false,
+                        foldGutter: false,
+                        highlightActiveLine: false,
+                        highlightActiveLineGutter: false,
+                      }}
+                      style={inlineStyles.s6}
+                    />
+                  ) : (
+                    <pre className={className} {...props} style={inlineStyles.s7}>
+                      <code>{children}</code>
+                    </pre>
+                  )}
+                  <button
+                    onClick={() => handleVisualizeCode(codeVal, explanation)}
+                    style={inlineStyles.s8}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245, 169, 91, 0.25)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245, 169, 91, 0.15)'; }}
+                  >
+                    <Zap size={11} fill="currentColor" />
+                    Visualize Code
+                  </button>
+                </div>
+              );
+            }
+            return <code className={className} {...props}>{children}</code>;
+          }
+        }}
+      >
+        {cleaned}
+      </ReactMarkdown>
+    );
+  };
+  
+  const textSessKey = 'coding-tutor-sessions';
+  const voiceSessKey = 'voice-coding-tutor-sessions';
+
+  const [userId] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    let id = localStorage.getItem('lms-user-id');
+    if (!id) {
+      id = 'user-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      localStorage.setItem('lms-user-id', id);
+    }
+    return id;
+  });
+
+  const isMobile = useMediaQuery(isMobileMQ);
+  const isTabletOrSmallDesktop = useMediaQuery('(max-width: 1150px)');
+  
+  const [chatWidthPercent, setChatWidthPercent] = useState(55);
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDraggingRef.current) return;
+    const container = document.getElementById('tutor-workspace-container');
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const relativeX = e.clientX - rect.left;
+      let newPercent = (relativeX / rect.width) * 100;
+      if (newPercent < 30) newPercent = 30;
+      if (newPercent > 70) newPercent = 70;
+      setChatWidthPercent(newPercent);
+    }
+  };
+
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const rPad = isMobile ? 14 : 28;
+  const rGap = isMobile ? 8 : 12;
+  const msgMaxW = '100%';
+  const bubbleMaxW = isMobile ? '100%' : 'min(760px, 86%)';
+  const fCol = isMobile ? '1fr' : '1fr 1fr';
+
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isInputHovered, setIsInputHovered] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [isInputPinned, setIsInputPinned] = useState(false);
+  const [showScrollDown, setShowScrollDown] = useState(false);
+  const configDropdownRef = useRef(null);
+
+  const handleChatScroll = useCallback(() => {
+    if (!chatRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatRef.current;
+    setShowScrollDown(scrollHeight - scrollTop - clientHeight > 140);
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (configDropdownRef.current && !configDropdownRef.current.contains(e.target)) {
+        setIsConfigOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  function getDateLabel(dateStr) {
+    if (!dateStr) return 'Older';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekStart = new Date(today);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    if (date >= today) return 'Today';
+    if (date >= yesterday) return 'Yesterday';
+    if (date >= weekStart) return 'This Week';
+    return 'Older';
+  }
+
+  // Load local sessions and restore active session if present
+  useEffect(() => {
+    let localText = [];
+    try {
+      const raw = localStorage.getItem(textSessKey);
+      if (raw) {
+        localText = JSON.parse(raw);
+        setTextSessions(localText);
+      }
+    } catch (e) {
+      console.error("Failed to parse local sessions:", e);
+    }
+
+    try { localStorage.removeItem('current-coding-tutor-session-id'); sessionStorage.removeItem('current-coding-tutor-session-id'); } catch {}
+    const activeSid = typeof window !== 'undefined' ? sessionStorage.getItem('current-coding-tutor-session-id') : null;
+    if (activeSid && localText.length > 0) {
+      const active = localText.find(s => s.id === activeSid);
+      if (active && active.messages && active.messages.length > 0) {
+        const msgs = (active.messages || []).map(m => ({ ...m, features: m.features || {}, activeFeature: null }));
+        setMessages(msgs);
+        setMode(active.mode || 'Beginner');
+        setLength(active.length || 'Short');
+        setCurrentSessionId(active.id);
+        setSessionDocs(active.documents || []);
+      }
+    }
+  }, []);
+
+  // Auto-resize the input textarea height
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    }
+  }, [topic]);
+
+  // Save currentSessionId to sessionStorage (scoped to active tab session only)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (currentSessionId) {
+        sessionStorage.setItem('current-coding-tutor-session-id', currentSessionId);
+      } else {
+        sessionStorage.removeItem('current-coding-tutor-session-id');
+      }
+    }
+  }, [currentSessionId]);
+
+  // Synchronize state with Sidebar.jsx
+  useEffect(() => {
+    const event = new CustomEvent('tutor-state-update', {
+      detail: {
+        currentSessionId,
+        textSessions,
+        voiceSessions: [],
+        type: 'coding-tutor'
+      }
+    });
+    window.dispatchEvent(event);
+  }, [currentSessionId, textSessions]);
+
+  const mergedSessions = useMemo(() => {
+    const text = (textSessions || []).map(s => ({ ...s, type: 'text' }));
+    text.sort((a, b) => {
+      const ta = new Date(a.timestamp || 0).getTime();
+      const tb = new Date(b.timestamp || 0).getTime();
+      return tb - ta;
+    });
+    return text;
+  }, [textSessions]);
+
+  const filteredSessions = useMemo(() => {
+    if (!historySearch.trim()) return mergedSessions;
+    const q = historySearch.toLowerCase();
+    return mergedSessions.filter(s =>
+      (s.label && s.label.toLowerCase().includes(q)) ||
+      (s.topic && s.topic.toLowerCase().includes(q)) ||
+      (s.messages && s.messages.some(m => m.content && m.content.toLowerCase().includes(q)))
+    );
+  }, [mergedSessions, historySearch]);
+
+  const sessionGroups = useMemo(() => {
+    const groups = { 'Today': [], 'Yesterday': [], 'This Week': [], 'Older': [] };
+    for (const s of filteredSessions) {
+      const label = getDateLabel(s.timestamp || s.startedAt);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(s);
+    }
+    return groups;
+  }, [filteredSessions]);
+
+  const handleNewChat = useCallback(() => {
+    setMessages([]);
+    setCurrentSessionId(null);
+    setSessionDocs([]);
+    setTopic('');
+    setErr('');
+    setUploadErr('');
+    setIsPlaygroundOpen(false);
+    setCodeOverride(null);
+    setExplanationOverride(null);
+    try { localStorage.removeItem('current-coding-tutor-session-id'); } catch {}
+    setShowLeftNav(false);
+  }, []);
+
+  const handleDeleteSession = useCallback(async (sid, e) => {
+    if (e) e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this chat session?')) return;
+
+    const updated = textSessions.filter(s => s.id !== sid);
+    setTextSessions(updated);
+    try { localStorage.setItem(textSessKey, JSON.stringify(updated)); } catch {}
+
+    if (currentSessionId === sid) {
+      setMessages([]);
+      setCurrentSessionId(null);
+      setSessionDocs([]);
+      setTopic('');
+      try { localStorage.removeItem('current-coding-tutor-session-id'); sessionStorage.removeItem('current-coding-tutor-session-id'); } catch {}
+    }
+  }, [textSessions, textSessKey, currentSessionId]);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [messages, streamingText]);
+
+  const handleSelectSession = useCallback((session) => {
+    const msgs = (session.messages || []).map(m => ({
+      ...m,
+      features: m.features || {},
+      activeFeature: null,
+    }));
+    setMessages(msgs);
+    setMode(session.mode || 'Beginner');
+    setLength(session.length || 'Short');
+    setCurrentSessionId(session.id);
+    setSessionDocs(session.documents || []);
+    setErr(''); setTopic(''); setUploadErr('');
+    setShowLeftNav(false);
+  }, []);
+
+  // Handle click outside to close open feature cards (excluding Visual Summary which only closes on explicit close)
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (
+        e.target.closest('[data-feature-container="true"]') ||
+        e.target.closest('[data-feature-button="true"]') ||
+        e.target.closest('.mermaid-modal-backdrop') ||
+        e.target.closest('.mermaid-modal-window') ||
+        e.target.closest('.mermaid-container')
+      ) {
+        return;
+      }
+      setMessages(prev => {
+        if (!prev.some(m => m.activeFeature && m.activeFeature !== 'infographic')) return prev;
+        return prev.map(m => (m.activeFeature && m.activeFeature !== 'infographic') ? { ...m, activeFeature: null } : m);
+      });
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  // Listen to events from the sidebar
+  useEffect(() => {
+    const handleSelect = (e) => {
+      handleSelectSession(e.detail);
+    };
+
+    const handleNew = () => {
+      setMessages([]);
+      setCurrentSessionId(null);
+      setSessionDocs([]);
+      setTopic('');
+      setErr('');
+      setUploadErr('');
+      setIsPlaygroundOpen(false);
+      setCodeOverride(null);
+      setExplanationOverride(null);
+    };
+
+    window.addEventListener('select-coding-tutor-session', handleSelect);
+    window.addEventListener('new-coding-tutor-session', handleNew);
+
+    return () => {
+      window.removeEventListener('select-coding-tutor-session', handleSelect);
+      window.removeEventListener('new-coding-tutor-session', handleNew);
+    };
+  }, [handleSelectSession]);
+
+  const saveSession = useCallback((msgs, overrideSid) => {
+    if (!msgs.some(m => m.role === 'ai')) return;
+    const lastUserMsg = [...msgs].reverse().find(m => m.role === 'user');
+    const label = lastUserMsg ? lastUserMsg.content.slice(0, 40) : 'Untitled';
+    const sid = overrideSid || currentSessionId || Date.now().toString(36);
+    // Sanitize activeFeature so feature drawers like Visual Summary are never persisted open across reloads
+    const sanitizedMsgs = msgs.map(m => ({ ...m, activeFeature: null }));
+    const session = {
+      id: sid, label, topic: label, mode, length,
+      messages: sanitizedMsgs,
+      documents: sessionDocsRef.current || [],
+      timestamp: new Date().toISOString(),
+    };
+    const updated = [session, ...textSessions.filter(s => s.id !== sid)];
+    setTextSessions(updated);
+    setCurrentSessionId(sid);
+    try { localStorage.setItem(textSessKey, JSON.stringify(updated)); } catch {}
+  }, [mode, length, textSessions, currentSessionId, textSessKey]);
+
+  const trackStatusStream = useCallback((docId, token) => {
+    const sseUrl = `/api/documents/status-stream?documentId=${docId}&token=${encodeURIComponent(token)}`;
+    const sse = new EventSource(sseUrl);
+    
+    sse.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const status = data.status;
+        
+        setSessionDocs(prev => {
+          const updated = prev.map(d => d.id === docId ? { ...d, status } : d);
+          setTimeout(() => {
+            const raw = localStorage.getItem(textSessKey);
+            if (raw) {
+              const sessions = JSON.parse(raw);
+              const sid = currentSessionId || (typeof window !== 'undefined' ? sessionStorage.getItem('current-coding-tutor-session-id') : null);
+              const sessIdx = sessions.findIndex(s => s.id === sid);
+              if (sessIdx !== -1) {
+                sessions[sessIdx].documents = updated;
+                localStorage.setItem(textSessKey, JSON.stringify(sessions));
+                setTextSessions(sessions);
+              }
+            }
+          }, 100);
+          return updated;
+        });
+        
+        if (status === 'completed' || status === 'failed') {
+          sse.close();
+        }
+      } catch (e) {
+        console.error("[SSE Status] Error parsing status event:", e);
+      }
+    };
+    
+    sse.onerror = () => {
+      sse.close();
+    };
+  }, [currentSessionId, textSessKey]);
+
+  useEffect(() => {
+    if (jwtToken && sessionDocs.length > 0) {
+      sessionDocs.forEach(d => {
+        if (d.status === 'pending_ingestion' || d.status === 'processing') {
+          trackStatusStream(d.id, jwtToken);
+        }
+      });
+    }
+  }, [jwtToken, sessionDocs.length]);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+      setUploadErr('Only PDF files are allowed.');
+      return;
+    }
+    
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadErr('File size cannot exceed 10MB.');
+      return;
+    }
+    
+    setUploading(true);
+    setUploadErr('');
+    
+    const sid = currentSessionId || Date.now().toString(36);
+    if (!currentSessionId) setCurrentSessionId(sid);
+    
+    try {
+      let token = jwtToken || await getJwtToken().catch(() => null);
+      if (token && !jwtToken) setJwtToken(token);
+      
+      if (!token) {
+        throw new Error("Unable to obtain authenticated token. Please refresh.");
+      }
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('sessionId', sid);
+      formData.append('courseId', 'general');
+      
+      const res = await fetch('/api/documents/upload', {
+         method: 'POST',
+         headers: {
+           'Authorization': `Bearer ${token}`
+         },
+         body: formData
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to upload document.');
+      }
+      
+      const data = await res.json();
+      const newDoc = { id: data.documentId, name: file.name, status: data.status };
+      
+      setSessionDocs(prev => {
+        const updated = [...prev, newDoc];
+        setTimeout(() => saveSession(messages, sid), 100);
+        return updated;
+      });
+      
+      trackStatusStream(data.documentId, token);
+    } catch (err) {
+      console.error("Upload error:", err);
+      setUploadErr(err.message || 'Error uploading document.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteDoc = async (docId) => {
+    const sid = currentSessionId;
+    if (!sid) return;
+    
+    try {
+      let token = jwtToken || await getJwtToken().catch(() => null);
+      if (token && !jwtToken) setJwtToken(token);
+      
+      const res = await fetch('/api/documents/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ documentId: docId, sessionId: sid })
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete document.');
+      }
+      
+      setSessionDocs(prev => {
+        const updated = prev.filter(d => d.id !== docId);
+        setTimeout(() => saveSession(messages, sid), 100);
+        return updated;
+      });
+    } catch (err) {
+      console.error("Delete error:", err);
+      setUploadErr(err.message || 'Error deleting document.');
+    }
+  };
+
+  const handleLibraryDelete = async (docId) => {
+    try {
+      let token = jwtToken || await getJwtToken().catch(() => null);
+      if (token && !jwtToken) setJwtToken(token);
+      
+      const res = await fetch('/api/documents/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ documentId: docId, sessionId: currentSessionId || 'general' })
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to delete');
+      }
+      
+      setAvailableDocs(prev => prev.filter(d => d.id !== docId));
+    } catch (err) {
+      console.error("Library delete error:", err);
+      setUploadErr(err.message || 'Error deleting from library');
+    }
+  };
+
+  // Construct a specialized coding feature system prompt that enforces programming constraints
+  const getCodingFeatureSystem = (type) => {
+    const baseSystem = FEATURE_SYSTEMS[type] || TUTOR_SYSTEM;
+    return `${baseSystem}\n\nCRITICAL RESTRICTION: You are Vyomanta's coding and programming tutor. You must ONLY answer questions, generate quizzes, flashcards, or infographics related to computer science, programming languages, algorithms, software engineering, and data structures. If the topic requested is not related to coding or computer science, you must return an empty response (or if returning JSON, return an empty array []).`;
+  };
+
+  const handleSend = async () => {
+    const raw = topic.trim();
+    if (!raw) return;
+    setIsJustSent(true);
+    setTimeout(() => setIsJustSent(false), 2200);
+    setTopic(''); setErr('');
+    setIsTyping(false);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+
+    const sid = currentSessionId || Date.now().toString(36);
+    if (!currentSessionId) setCurrentSessionId(sid);
+
+    const blobMoods = ['happy', 'curious', 'surprised', 'love', 'sideEye', 'hmm', 'shy', 'wave'];
+    const blobMood = blobMoods[Math.floor(Math.random() * blobMoods.length)];
+    const userMsg = { id: Date.now().toString(36), role: 'user', content: raw, mode, length, documents: [...sessionDocs], blobMood };
+    const msgsWithUser = [...messages, userMsg];
+    setSessionDocs([]);
+
+    if (detectPromptInjection(raw)) {
+      const aiMsg = { 
+        id: (Date.now() + 1).toString(36), 
+        role: 'ai', 
+        content: "⚠️ **Security Notice**: Your input was flagged as a potential prompt injection attempt or policy violation. To protect our free Gemini API tokens, please only enter programming-related queries.", 
+        local: true, 
+        features: {} 
+      };
+      const next = [...msgsWithUser, aiMsg];
+      setMessages(next); saveSession(next, sid);
+      return;
+    }
+
+    const intent = classifyIntent(raw);
+
+    if (intent.type === 'greeting') {
+      const aiMsg = { id: (Date.now() + 1).toString(36), role: 'ai', content: getGreetingResponse(), local: true, features: {} };
+      const next = [...msgsWithUser, aiMsg];
+      setMessages(next); saveSession(next, sid);
+      return;
+    }
+
+    if (intent.type === 'thanks') {
+      const aiMsg = { id: (Date.now() + 1).toString(36), role: 'ai', content: getThanksResponse(), local: true, features: {} };
+      const next = [...msgsWithUser, aiMsg];
+      setMessages(next); saveSession(next, sid);
+      return;
+    }
+
+    if (intent.type === 'math') {
+      const result = evaluateMath(intent.expression);
+      const aiMsg = { id: (Date.now() + 1).toString(36), role: 'ai', content: `**${intent.expression}** = ${result}`, local: true, features: {} };
+      const next = [...msgsWithUser, aiMsg];
+      setMessages(next); saveSession(next, sid);
+      return;
+    }
+
+    if (intent.type === 'feature') {
+      setMessages(msgsWithUser);
+      setLoading(true);
+      try {
+        const tokens = MAX_TOKENS[length.toLowerCase()] || 2000;
+        const prompt = buildFeaturePrompt(intent.feature, intent.topic, mode);
+        const system = getCodingFeatureSystem(intent.feature);
+        const text = await geminiCall(system, prompt, tokens, { sessionId: sid, userId });
+        
+        if (!text.trim() || text.trim() === '[]') {
+          throw new Error('I can only generate learning materials for coding and programming-related topics. Please try a coding-related request.');
+        }
+        
+        const features = {};
+        if (intent.feature === 'quiz') {
+          const parsed = parseQuizOutput(text);
+          if (parsed.length === 0) throw new Error('I can only generate quizzes on programming-related topics.');
+          features.quiz = { questions: parsed, currentIdx: 0, currentAnswer: null };
+        } else if (intent.feature === 'flashcards') {
+          const parsed = parseFlashcardsOutput(text);
+          if (parsed.length === 0) throw new Error('I can only generate flashcards on programming-related topics.');
+          features.flashcards = { cards: parsed, currentIdx: 0, flipped: false };
+        } else if (intent.feature === 'infographic') {
+          let parsed = null;
+          try {
+            parsed = await generateDynamicInfographic({
+              response: text || intent.topic,
+              question: intent.topic,
+              subject: 'Coding',
+            });
+          } catch (err) {
+            console.warn('[CodingTutor] Infographic intent generation notice:', err);
+          }
+          if (!parsed || !parsed.scene) {
+            const localResult = generateInfographic(intent.topic || text);
+            parsed = {
+              points: localResult.points,
+              mermaid: localResult.mermaid,
+              diagramType: localResult.diagramType || 'flowchart'
+            };
+          }
+          features.infographic = parsed;
+        } else if (intent.feature === 'simpler') {
+          features.simpler = { text };
+        } else if (intent.feature === 'examples') {
+          features.examples = { text };
+        }
+        
+        const label = FEATURE_LABELS[intent.feature] || 'response';
+        const aiMsg = { id: (Date.now() + 1).toString(36), role: 'ai', content: `Here's a ${label} on ${intent.topic}:`, features, activeFeature: intent.feature };
+        const next = [...msgsWithUser, aiMsg];
+        setMessages(next); saveSession(next, sid);
+      } catch (e) {
+        setErr(e.message || 'Error generating feature.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    setMessages(msgsWithUser);
+    setStreamingText(' ');
+    setLoading(true);
+
+    try {
+      let systemPrompt = CODING_TUTOR_SYSTEM;
+      let finalPrompt = "";
+      const baseTokens = MAX_TOKENS[length.toLowerCase()] || 800;
+      let tokens = baseTokens;
+
+      const mentionMatch = raw.match(/^@(analyze|tips|fix|explain|help)\b([\s\S]*)/i);
+      if (mentionMatch) {
+        const cmd = mentionMatch[1].toLowerCase();
+        const userText = mentionMatch[2].trim();
+
+        if (cmd === 'analyze') {
+          systemPrompt = BUG_ANALYSIS_SYSTEM;
+          tokens = baseTokens + 300;
+        } else if (cmd === 'tips') {
+          systemPrompt = BUG_TIPS_SYSTEM;
+        } else if (cmd === 'fix') {
+          systemPrompt = BUG_FIX_METHODS_SYSTEM;
+        } else if (cmd === 'explain') {
+          systemPrompt = FIX_EXPLANATION_SYSTEM;
+        } else if (cmd === 'help') {
+          systemPrompt = SOCRATIC_HELP_SYSTEM;
+        }
+
+        let targetCode = "";
+        const codeBlockMatch = userText.match(/```python[\s\S]*?```/i) || userText.match(/```[\s\S]*?```/i);
+        if (codeBlockMatch) {
+          targetCode = codeBlockMatch[0];
+        } else if (currentSandboxCode && currentSandboxCode.trim()) {
+          targetCode = currentSandboxCode.trim();
+        }
+
+        finalPrompt = "";
+        if (targetCode) {
+          finalPrompt += `Here is the code context to work with:\n\`\`\`python\n${targetCode}\n\`\`\`\n\n`;
+        }
+        finalPrompt += `User request: ${userText || "Please perform this action on the code."}\n\n`;
+        
+        const modeInst = MODE_INSTRUCTIONS[mode] || '';
+        const lenKey = length.toLowerCase();
+        const lenInst = LENGTH_INSTRUCTIONS[lenKey] || '';
+        
+        let extraLenGuideline = "";
+        if (lenKey === 'short') {
+          extraLenGuideline = "\n- Keep your output extremely brief and direct. Pinpoint the bug or explain the concept immediately in 1-2 simple sentences or minimal bullet points. Avoid any generic introduction or long-winded text.";
+        } else if (lenKey === 'medium') {
+          extraLenGuideline = "\n- Keep your output moderate in size, balancing clear explanations with concise code examples.";
+        } else if (lenKey === 'deep') {
+          extraLenGuideline = "\n- Provide a comprehensive, in-depth analysis covering all nuances, advanced optimization strategies, edge cases, and step-by-step breakdowns.";
+        }
+
+        finalPrompt += `Mode: ${mode}\n${modeInst}\n\nLength Level: ${length}\n${lenInst}${extraLenGuideline}`;
+      } else {
+        finalPrompt = buildChatPrompt(raw, mode, length);
+      }
+
+      const targetEndpoint = jwtToken ? '/api/tutor/chat/stream' : '/api/gemini/stream';
+      const headers = { 'Content-Type': 'application/json' };
+      if (jwtToken) {
+        headers['Authorization'] = `Bearer ${jwtToken}`;
+      }
+      
+      const res = await fetch(targetEndpoint, {
+        method: 'POST',
+        headers,
+        // When authenticated via JWT, omit userId from body — server extracts user identity from the token.
+        // Sending a mismatched localStorage userId causes a 403 Forbidden response.
+        body: JSON.stringify({ system: systemPrompt, user: finalPrompt, maxOutputTokens: tokens, sessionId: sid, ...(jwtToken ? {} : { userId }), courseId: 'general' }),
+      });
+      let fullText = '';
+      if (res.ok && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          fullText += decoder.decode(value, { stream: true });
+          if (streamElRef.current) {
+            let displayStream = fullText.replace(/<analytics>[\s\S]*?<\/analytics>/i, '');
+            if (displayStream.includes('<analytics>')) {
+              displayStream = displayStream.split('<analytics>')[0];
+            }
+            const match = displayStream.match(/([\s\S]*?```python[\s\S]*?```)([\s\S]*)/);
+            streamElRef.current.textContent = match ? match[1] : displayStream;
+          }
+        }
+      }
+
+      // Resilient fallback to reliable non-streaming endpoint if stream returned empty
+      if (!fullText.trim()) {
+        try {
+          const fallbackText = await geminiCall(systemPrompt, finalPrompt, tokens, { sessionId: sid, userId });
+          if (fallbackText && fallbackText.trim()) {
+            fullText = fallbackText;
+          }
+        } catch (callErr) {
+          console.warn('[CodingTutor] Direct gemini fallback notice:', callErr?.message);
+        }
+      }
+
+      if (!fullText.trim()) {
+        throw new Error('AI response generation timed out. Please try asking again.');
+      }
+
+      const analyticsRegex = /<analytics>([\s\S]*?)<\/analytics>/i;
+      const analyticsMatch = fullText.match(analyticsRegex);
+      let parsedAnalytics = null;
+      if (analyticsMatch) {
+        try {
+          parsedAnalytics = JSON.parse(analyticsMatch[1].trim());
+        } catch (e) {
+          console.warn("Failed to parse analytics JSON:", e);
+        }
+      }
+
+      const aiMsg = { 
+        id: (Date.now() + 1).toString(36), 
+        role: 'ai', 
+        content: fullText, 
+        features: {},
+        analytics: parsedAnalytics
+      };
+      const next = [...msgsWithUser, aiMsg];
+      setMessages(next);
+      setStreamingText('');
+      saveSession(next, sid);
+    } catch (e) {
+      setErr(e.message || 'Error generating response.');
+      setStreamingText('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateFeature = async (msgIdx, type) => {
+    if (generating.msgIdx === msgIdx && generating.type === type) return;
+    const msg = messages[msgIdx];
+    if (!msg || msg.role !== 'ai') return;
+
+    setGenerating({ msgIdx, type });
+    try {
+      if (type === 'infographic') {
+        let parsed = null;
+        try {
+          const lastUserMsg = [...messages.slice(0, msgIdx)].reverse().find(m => m.role === 'user');
+          parsed = await generateDynamicInfographic({
+            response: msg.content,
+            question: lastUserMsg?.content || '',
+            subject: 'Coding',
+          });
+        } catch (callErr) {
+          console.warn('[CodingTutor] Dynamic infographic call notice:', callErr?.message);
+        }
+
+        // Graceful fallback to dynamic local infographic engine using actual content
+        if (!parsed || !parsed.scene) {
+          const localResult = generateInfographic(msg.content);
+          parsed = {
+            points: localResult.points,
+            mermaid: localResult.mermaid,
+            diagramType: localResult.diagramType || 'flowchart'
+          };
+        }
+
+        setMessages(prev => prev.map((m, i) => {
+          if (i !== msgIdx) return m;
+          return {
+            ...m,
+            features: { ...m.features, infographic: parsed },
+            activeFeature: 'infographic'
+          };
+        }));
+        return;
+      }
+
+      const system = getCodingFeatureSystem(type);
+      const prompt = buildFeaturePrompt(type, msg.content, mode);
+      const tokens = type === 'simpler' || type === 'examples' ? 1000 : 1500;
+      const text = await geminiCall(system, prompt, tokens, { sessionId: currentSessionId, userId });
+      if (!text.trim() || text.trim() === '[]') throw new Error('Could not generate coding-related feature for this topic.');
+
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== msgIdx) return m;
+        const f = { ...m.features };
+        if (type === 'quiz') f.quiz = { questions: parseQuizOutput(text), currentIdx: 0, currentAnswer: null };
+        else if (type === 'flashcards') f.flashcards = { cards: parseFlashcardsOutput(text), currentIdx: 0, flipped: false };
+        else if (type === 'simpler') f.simpler = { text };
+        else if (type === 'examples') f.examples = { text };
+        return { ...m, features: f, activeFeature: type };
+      }));
+    } catch (e) {
+      setErr(`Failed to generate ${type}: ${e.message}`);
+    } finally {
+      setGenerating({ msgIdx: null, type: null });
+    }
+  };
+
+  const handleFeatureClick = (msgIdx, type) => {
+    const msg = messages[msgIdx];
+    if (!msg) return;
+    if (featureExists(msg, type)) {
+      setMessages(prev => prev.map((m, i) => {
+        if (i !== msgIdx) return m;
+        return { ...m, activeFeature: m.activeFeature === type ? null : type };
+      }));
+    } else {
+      handleGenerateFeature(msgIdx, type);
+    }
+  };
+
+  const handleQuizAnswer = (msgIdx, answerIdx) => {
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || !m.features.quiz) return m;
+      if (m.features.quiz.currentAnswer !== null) return m;
+      return { ...m, features: { ...m.features, quiz: { ...m.features.quiz, currentAnswer: answerIdx } } };
+    }));
+  };
+
+  const handleQuizNav = (msgIdx, dir) => {
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || !m.features.quiz) return m;
+      const q = m.features.quiz;
+      const max = q.questions.length - 1;
+      const next = dir === 'next' ? Math.min(q.currentIdx + 1, max) : Math.max(q.currentIdx - 1, 0);
+      return { ...m, features: { ...m.features, quiz: { ...q, currentIdx: next, currentAnswer: null } } };
+    }));
+  };
+
+  const handleFlashcardFlip = (msgIdx) => {
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || !m.features.flashcards) return m;
+      return { ...m, features: { ...m.features, flashcards: { ...m.features.flashcards, flipped: !m.features.flashcards.flipped } } };
+    }));
+  };
+
+  const handleFlashcardNav = (msgIdx, dir) => {
+    setMessages(prev => prev.map((m, i) => {
+      if (i !== msgIdx || !m.features.flashcards) return m;
+      const fc = m.features.flashcards;
+      const len = fc.cards.length;
+      const next = dir === 'next' ? (fc.currentIdx + 1) % len : (fc.currentIdx - 1 + len) % len;
+      return { ...m, features: { ...m.features, flashcards: { ...fc, currentIdx: next, flipped: false } } };
+    }));
+  };
+
+  const isGeneratingFeature = (mi, type) => generating.msgIdx === mi && generating.type === type;
+
+  const featureExists = (msg, type) => {
+    if (type === 'quiz') return !!msg.features?.quiz;
+    if (type === 'flashcards') return !!msg.features?.flashcards;
+    if (type === 'infographic') return !!msg.features?.infographic;
+    if (type === 'simpler') return !!msg.features?.simpler;
+    if (type === 'examples') return !!msg.features?.examples;
+    return false;
+  };
+
+  const tutorNavItems = [
+    { href: '/',              Icon: Home,      label: 'Dashboard'     },
+    { href: '/courses',       Icon: BookOpen,  label: 'Courses'       },
+    { href: '/coding-tutor',  Icon: Code2,     label: 'Code with AI Tutor'  },
+    { href: '/progress',      Icon: BarChart3, label: 'Progress'      },
+  ];
+
+  const tutorExtras = (close) => {
+    const items = [];
+
+    // Mode select
+    items.push(
+      <div key="mode-select">
+        <label style={featureStyleFunctions.s18({T})}>LEARNING MODE</label>
+        <select value={mode} onChange={e => setMode(e.target.value)}
+          style={featureStyleFunctions.s19({T,modeColors,mode})}>
+          {MODES.map(m => <option key={m} value={m} style={featureStyleFunctions.s20({T})}>{m}</option>)}
+        </select>
+      </div>
+    );
+
+    // Length select
+    items.push(
+      <div key="len-select">
+        <label style={featureStyleFunctions.s21({T})}>RESPONSE DEPTH</label>
+        <select value={length} onChange={e => setLength(e.target.value)}
+          style={featureStyleFunctions.s22({T,length})}>
+          {LENGTHS.map(l => <option key={l} value={l} style={featureStyleFunctions.s23({T})}>{l}</option>)}
+        </select>
+      </div>
+    );
+
+    // Session history
+    if (isMobile && mergedSessions?.length > 0) {
+      const groups = {};
+      const ordered = ['Today', 'Yesterday', 'This Week', 'Older'];
+      for (const s of mergedSessions) {
+        const label = getDateLabel(s.timestamp);
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(s);
+      }
+      for (const key of Object.keys(groups)) {
+        groups[key].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      }
+
+      items.push(
+        <div key="sessions">
+          <div style={featureStyleFunctions.s24({T})}>SESSION HISTORY</div>
+          {ordered.map(group => {
+            const sList = groups[group];
+            if (!sList) return null;
+            return (
+              <div key={group} style={inlineStyles.s9}>
+                <div style={featureStyleFunctions.s25({T})}>{group}</div>
+                {sList.map(session => {
+                  const isActive = session.id === currentSessionId;
+                  return (
+                    <button key={'coding-' + session.id}
+                      onClick={() => {
+                        setActiveTab('text');
+                        handleSelectSession(session);
+                        if (close) close();
+                      }}
+                      style={featureStyleFunctions.s26({isActive,T})}>
+                      <span style={featureStyleFunctions.s27({T})}>
+                        <Code2 size={11} color={T.amber} />
+                      </span>
+                      <span style={featureStyleFunctions.s28({isActive})}>
+                        {session.label || 'Untitled'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return items;
+  };
+
+  const handleKeyDown = (e) => {
+    if (showMentionDropdown && filteredMentions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => (prev + 1) % filteredMentions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedMentionIndex(prev => (prev - 1 + filteredMentions.length) % filteredMentions.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        handleSelectMention(filteredMentions[selectedMentionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionDropdown(false);
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      setIsTyping(false);
+      handleSend();
+      return;
+    }
+
+    if (!['Control', 'Alt', 'Shift', 'Meta', 'Escape', 'Tab', 'CapsLock'].includes(e.key)) {
+      setIsTyping(true);
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        setIsTyping(false);
+      }, 2500);
+    }
+  };
+
+  const showSplitLayout = isPlaygroundOpen && !isMobile && !isTabletOrSmallDesktop;
+  const showVerticalSplit = isPlaygroundOpen && (isMobile || isTabletOrSmallDesktop);
+
+  if (authenticating) {
+    return (
+      <div style={featureStyleFunctions.s29({T})}>
+        
+        <Loader2 className="custom-spin" size={48} color={T.amber} />
+        <p style={featureStyleFunctions.s30({T})}>Authenticating session...</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <MobileNav title="Code with AI Tutor" accent={T.amber} items={[]} dropdownItems={NAV} extras={tutorExtras} />
+      <div style={featureStyleFunctions.s31({bgTheme,T})}>
+        <div id="tutor-workspace-container" style={inlineStyles.s10}>
+          
+          {/* Floating Glassmorphic Left Page Navbar */}
+          {showLeftNav && (
+            <aside
+              ref={leftNavRef}
+              data-left-sidebar="true"
+              style={featureStyleFunctions.s32({isMobile,leftNavView})}
+            >
+              {leftNavView === 'menu' ? (
+                <>
+                  {/* Top: Close Button + Action List */}
+                  <div>
+                    <div style={inlineStyles.s11}>
+                      <button
+                        onClick={() => setShowLeftNav(false)}
+                        title="Close Menu (Esc / Ctrl+B)"
+                        style={inlineStyles.s12}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+
+                    {/* Navigation items list */}
+                    <div style={inlineStyles.s13}>
+                      {/* New Chat */}
+                      <button
+                        onClick={() => { handleNewChat(); setShowLeftNav(false); }}
+                        style={inlineStyles.s14}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = '#FFFFFF'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#E2E8F0'; }}
+                      >
+                        <Plus size={16} color="#06B6D4" />
+                        <span>New Chat</span>
+                      </button>
+
+                      {/* History */}
+                      <button
+                        onClick={() => setLeftNavView('history')}
+                        style={inlineStyles.s15}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; e.currentTarget.style.color = '#FFFFFF'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#E2E8F0'; }}
+                      >
+                        <History size={16} color="#38BDF8" />
+                        <span style={inlineStyles.s16}>History</span>
+                        {mergedSessions && mergedSessions.length > 0 && (
+                          <span style={inlineStyles.s17}>
+                            {mergedSessions.length}
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Vedika Code AI (Active highlighted pill) */}
+                      <div
+                        style={inlineStyles.s18}
+                      >
+                        <Code2 size={16} color="#38BDF8" />
+                        <span>Code with Vedika</span>
+                      </div>
+
+                      {/* Divider */}
+                      <div style={inlineStyles.s19} />
+
+                      {/* Python Sandbox Toggle */}
+                      <button
+                        onClick={() => { setIsPlaygroundOpen(prev => !prev); setShowLeftNav(false); }}
+                        style={featureStyleFunctions.s33({isPlaygroundOpen})}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(6, 182, 212, 0.15)'; }}
+                        onMouseLeave={e => { if (!isPlaygroundOpen) { e.currentTarget.style.color = '#E2E8F0'; e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        <Zap size={16} fill={isPlaygroundOpen ? '#38BDF8' : 'none'} color="#38BDF8" />
+                        <span>Python Sandbox</span>
+                      </button>
+
+                      {/* Text Mode */}
+                      <button
+                        onClick={() => { setActiveTab('text'); setShowLeftNav(false); }}
+                        style={featureStyleFunctions.s34({activeTab})}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+                        onMouseLeave={e => { if (activeTab !== 'text') { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        <Type size={16} />
+                        <span>Text Mode</span>
+                      </button>
+
+                      {/* Voice Mode */}
+                      <button
+                        onClick={() => { setActiveTab('voice'); setShowLeftNav(false); }}
+                        style={featureStyleFunctions.s35({activeTab})}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(6, 182, 212, 0.2)'; }}
+                        onMouseLeave={e => { if (activeTab !== 'voice') { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; } }}
+                      >
+                        <Waves size={16} />
+                        <span>Voice Mode</span>
+                      </button>
+
+                      {/* Theme Selector Section */}
+                      <div style={inlineStyles.s20}>
+                        <div style={inlineStyles.s21}>
+                          Background Theme
+                        </div>
+                        <div style={inlineStyles.s22}>
+                          {BG_THEMES.map(th => {
+                            const isCur = bgTheme === th.id;
+                            return (
+                              <button
+                                key={th.id}
+                                onClick={() => selectBgTheme(th.id)}
+                                style={featureStyleFunctions.s36({isCur,th})}
+                                onMouseEnter={e => {
+                                  if (!isCur) {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
+                                    e.currentTarget.style.color = '#FFFFFF';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (!isCur) {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                    e.currentTarget.style.color = '#94A3B8';
+                                  }
+                                }}
+                              >
+                                <span style={inlineStyles.s23}>{th.emoji}</span>
+                                <span style={inlineStyles.s24}>{th.shortLabel}</span>
+                                {isCur && <span style={featureStyleFunctions.s37({th})} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* History Subview inside the Floating Glassmorphic Sidebar */
+                <div style={inlineStyles.s25}>
+                  {/* Header: Back to Menu + History Title with Badge + New Chat + Close */}
+                  <div style={inlineStyles.s26}>
+                    <div style={inlineStyles.s27}>
+                      <button
+                        onClick={() => setLeftNavView('menu')}
+                        style={inlineStyles.s28}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(56, 189, 248, 0.15)'; e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'; }}
+                        title="Back to Menu"
+                      >
+                        <ChevronLeft size={15} />
+                        <span>Menu</span>
+                      </button>
+
+                      <span style={inlineStyles.s29}>
+                        <span>History</span>
+                        {mergedSessions?.length > 0 && (
+                          <span style={inlineStyles.s30}>
+                            {mergedSessions.length}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div style={inlineStyles.s31}>
+                      <button
+                        onClick={() => { handleNewChat(); setShowLeftNav(false); }}
+                        style={inlineStyles.s32}
+                        title="Start New Chat"
+                      >
+                        <Plus size={13} color="#06B6D4" />
+                        <span>New</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowLeftNav(false)}
+                        style={inlineStyles.s33}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'; }}
+                        title="Close"
+                        aria-label="Close"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search Bar */}
+                  <div style={inlineStyles.s34}>
+                    <Search size={13} color="#64748B" style={inlineStyles.s35} />
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={e => setHistorySearch(e.target.value)}
+                      placeholder="Search code conversations..."
+                      style={inlineStyles.s36}
+                    />
+                    {historySearch && (
+                      <button
+                        onClick={() => setHistorySearch('')}
+                        style={inlineStyles.s37}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Sessions Scroll List */}
+                  <div style={inlineStyles.s38}>
+                    {['Today', 'Yesterday', 'This Week', 'Older'].map(groupKey => {
+                      const list = sessionGroups[groupKey] || [];
+                      if (list.length === 0) return null;
+                      return (
+                        <div key={groupKey} style={inlineStyles.s39}>
+                          <div style={inlineStyles.s40}>
+                            {groupKey}
+                          </div>
+                          {list.map(session => {
+                            const isActive = session.id === currentSessionId;
+                            const title = session.label || session.topic || 'Untitled Session';
+                            const msgCount = session.messages?.length || 0;
+                            const timeStr = session.timestamp ? new Date(session.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                            return (
+                              <div
+                                key={session.id}
+                                onClick={() => { handleSelectSession(session); setShowLeftNav(false); }}
+                                style={featureStyleFunctions.s38({isActive})}
+                                onMouseEnter={e => {
+                                  if (!isActive) {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if (!isActive) {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)';
+                                  }
+                                }}
+                              >
+                                <div style={inlineStyles.s41}>
+                                  <span style={featureStyleFunctions.s39({isActive})}>
+                                    💻 {title}
+                                  </span>
+                                  <button
+                                    onClick={(e) => handleDeleteSession(session.id, e)}
+                                    title="Delete session"
+                                    style={inlineStyles.s42}
+                                    onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#F87171'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = '#64748B'; }}
+                                  >
+                                    <Trash size={12} />
+                                  </button>
+                                </div>
+                                <div style={inlineStyles.s43}>
+                                  <div style={inlineStyles.s44}>
+                                    {session.mode && (
+                                      <span style={featureStyleFunctions.s40({modeColors,session,T})}>
+                                        {session.mode}
+                                      </span>
+                                    )}
+                                    {msgCount > 0 && <span>{msgCount} msgs</span>}
+                                  </div>
+                                  {timeStr && <span style={inlineStyles.s45}>{timeStr}</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+
+                    {filteredSessions.length === 0 && (
+                      <div style={inlineStyles.s46}>
+                        <History size={24} style={inlineStyles.s47} />
+                        <div>No conversations found.</div>
+                        <button
+                          onClick={() => { handleNewChat(); setShowLeftNav(false); }}
+                          style={inlineStyles.s48}
+                        >
+                          + Start New Chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </aside>
+          )}
+
+          {activeTab === 'voice' ? (
+            <VoiceAgentView
+              inline={true}
+              onClose={() => { setActiveTab('text'); setVoiceSessionToRestore(null); }}
+              initialSession={voiceSessionToRestore}
+              sessionId={currentSessionId}
+              userId={userId}
+              onSessionComplete={(voiceMsgs) => {
+                if (voiceMsgs?.length > 0) {
+                  const mapped = voiceMsgs.map(m => ({
+                    role: m.sender === 'student' ? 'user' : 'ai',
+                    content: m.text
+                  }));
+                  setMessages(prev => {
+                    const updated = [...prev, ...mapped];
+                    setTimeout(() => saveSession(updated, currentSessionId), 100);
+                    return updated;
+                  });
+                }
+              }}
+            />
+          ) : (
+            <>
+              {/* ── CHAT & WATERMARK CONTAINER ── */}
+              <div style={featureStyleFunctions.s41({bgTheme})}>
+                
+                {/* FeralUI Flow Gradient Canvas Background */}
+                <GlacierBackground variant={bgTheme} opacity={1.0} />
+
+
+                {/* Floating Top-Left Back Button */}
+                <button
+                  type="button"
+                  onClick={() => router.push('/vedika-ai')}
+                  style={featureStyleFunctions.s42({isMobile})}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#06B6D4'; e.currentTarget.style.color = '#FFFFFF'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(6, 182, 212, 0.35)'; e.currentTarget.style.color = '#E2E8F0'; }}
+                  title="Back to Assistant Hub"
+                >
+                  <ChevronLeft size={14} color="#38BDF8" />
+                  <span>Back</span>
+                </button>
+
+                {/* Floating Top-Right Controls: Python Sandbox Toggle & Mode Pill */}
+                <div style={featureStyleFunctions.s43({isMobile})}>
+                  <button
+                    onClick={() => setIsPlaygroundOpen(!isPlaygroundOpen)}
+                    style={featureStyleFunctions.s44({isPlaygroundOpen})}
+                    title={isPlaygroundOpen ? "Close Python Sandbox" : "Open Python Sandbox"}
+                  >
+                    <Zap size={12} fill={isPlaygroundOpen ? '#38BDF8' : 'none'} color={isPlaygroundOpen ? '#38BDF8' : '#CBD5E1'} />
+                    <span>{isPlaygroundOpen ? 'Close Sandbox' : 'Python Sandbox'}</span>
+                  </button>
+
+                  <div style={inlineStyles.s49} />
+
+                  <div style={inlineStyles.s50}>
+                    <button
+                      onClick={() => setActiveTab('text')}
+                      style={featureStyleFunctions.s45({activeTab})}
+                    >
+                      Text
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('voice')}
+                      style={featureStyleFunctions.s46({activeTab})}
+                    >
+                      Voice
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── CHAT MESSAGES AREA (z-index: 1 sits cleanly over watermark) ── */}
+                <div ref={chatRef} onScroll={handleChatScroll} style={featureStyleFunctions.s47({isMobile})}>
+                  
+                  {/* Centered Date Capsule */}
+                  <div style={inlineStyles.s51}>
+                    <div style={inlineStyles.s52}>
+                      Today, {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                    {/* Welcome AI Message */}
+                    <div style={featureStyleFunctions.s48({rGap,msgMaxW})}>
+                      <div style={featureStyleFunctions.s49({isMobile})}>
+                        <Code2 size={isMobile ? 15 : 18} color="#06B6D4" />
+                      </div>
+                      <div>
+                        <div style={inlineStyles.s53}>VEDIKA CODE AI</div>
+                        <div style={inlineStyles.s54}>
+                          <div style={inlineStyles.s55}>Hello! I'm Vedika, your interactive coding and software engineering tutor.</div>
+                          <div style={inlineStyles.s56}>Ask me any programming questions, debug algorithms, or open the Python Sandbox to test code live.</div>
+                          <div style={inlineStyles.s57}>You can also generate coding quizzes, flashcards, and step-by-step logic breakdowns on demand.</div>
+                        </div>
+                      </div>
+                    </div>
+
+              {/* Chat Thread */}
+              {messages.map((msg, mi) => {
+                const isAi = msg.role === 'ai';
+                let displayContent = msg.content || '';
+                const analyticsRegex = /<analytics>[\s\S]*?<\/analytics>/i;
+                displayContent = displayContent.replace(analyticsRegex, '').trim();
+
+                const match = isAi && displayContent ? displayContent.match(/([\s\S]*?```python[\s\S]*?```)([\s\S]*)/) : null;
+                const chatContent = match ? match[1] : displayContent;
+                const explanation = match ? match[2].trim() : '';
+
+                return (
+                  <div key={msg.id || mi} id={`msg-${mi}`} style={inlineStyles.s58}>
+                    {/* User Bubble */}
+                    {msg.role === 'user' && (
+                      <div style={inlineStyles.s59}>
+                        <div style={featureStyleFunctions.s50({isMobile,bubbleMaxW})}>
+                          {/* Top Header: Cyan YOU label beside Blob avatar */}
+                          <div style={inlineStyles.s60}>
+                            <UserBlobAvatar
+                              isTyping={false}
+                              isAiLoading={false}
+                              size={isMobile ? 36 : 42}
+                              themeColor="amber"
+                              mood={msg.blobMood || ['happy', 'curious', 'surprised', 'love', 'sideEye', 'hmm', 'shy', 'wave'][mi % 8]}
+                            />
+                          </div>
+
+                          {/* User Text Bubble starting directly below (Subtle Instagram theme gradient) */}
+                          <div style={featureStyleFunctions.s51({isMobile})}>
+                            {msg.content}
+                            {msg.documents && msg.documents.length > 0 && (
+                              <div style={featureStyleFunctions.s52({T})}>
+                                {msg.documents.map(doc => (
+                                  <div key={doc.id} style={featureStyleFunctions.s53({T})}>
+                                    <span>📄</span>
+                                    <span style={featureStyleFunctions.s54({T})}>{doc.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {msg.mode && (
+                            <div style={featureStyleFunctions.s55({T})}>
+                              {msg.mode} &middot; {msg.length}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Bubble */}
+                    {msg.role === 'ai' && (
+                      <div style={featureStyleFunctions.s56({msgMaxW})}>
+                        {/* Top Header: Code2 icon + Title */}
+                        <div style={inlineStyles.s61}>
+                          <div style={featureStyleFunctions.s57({T})}>
+                            <Code2 size={14} color={T.amber} />
+                          </div>
+                          <div style={featureStyleFunctions.s58({T})}>
+                            VEDIKA
+                          </div>
+                        </div>
+
+                        <div style={inlineStyles.s62}>
+                          {/* Visual Analytics Card */}
+                          {parseAnalyticsFromMessage(msg) && renderAnalyticsCard(parseAnalyticsFromMessage(msg))}
+
+                          {/* Glassmorphic AI Response Message Box below (Subtle Ocean-Emerald Jewel Gradient) */}
+                          <div style={featureStyleFunctions.s59({bubbleMaxW,isMobile})}>
+                            <div className="md-content">
+                              {renderMarkdown(chatContent, explanation)}
+                            </div>
+                          </div>
+
+                        {/* HTML Tab Suggestions Container */}
+                        {msg.activeFeature && (
+                          <div data-feature-container="true" style={featureStyleFunctions.s60({T})}>
+                            {/* Tab Content Panel */}
+                            <div style={inlineStyles.s63}>
+                              {msg.activeFeature === 'quiz' && (
+                                msg.features?.quiz?.questions?.length > 0 ? (
+                                  <>
+                                    <div style={inlineStyles.s64}>
+                                      <span style={featureStyleFunctions.s61({T})}>Question {msg.features.quiz.currentIdx + 1} of {msg.features.quiz.questions.length}</span>
+                                      <button onClick={() => handleGenerateFeature(mi, 'quiz')}
+                                        style={featureStyleFunctions.s62({T})}>
+                                        Regenerate
+                                      </button>
+                                    </div>
+                                    <div style={featureStyleFunctions.s63({T})}>{msg.features.quiz.questions[msg.features.quiz.currentIdx]?.question}</div>
+                                    <div style={inlineStyles.s65}>
+                                      {msg.features.quiz.questions[msg.features.quiz.currentIdx]?.options.map((opt, oi) => {
+                                        const answered = msg.features.quiz.currentAnswer !== null;
+                                        const selected = msg.features.quiz.currentAnswer === oi;
+                                        const correct = oi === msg.features.quiz.questions[msg.features.quiz.currentIdx].correct;
+                                        let bg = T.s3, bd = T.border, cl = T.muted;
+                                        if (answered && correct) { bg = `${T.green}18`; bd = `${T.green}50`; cl = T.green; }
+                                        else if (answered && selected) { bg = `${T.red}18`; bd = `${T.red}50`; cl = T.red; }
+                                        else if (selected) { bg = `${T.accent}18`; bd = `${T.accent}50`; cl = T.accent; }
+                                        return (
+                                          <button key={oi} onClick={() => handleQuizAnswer(mi, oi)} disabled={answered}
+                                            style={featureStyleFunctions.s64({bg,bd,cl,answered})}>
+                                            <span style={inlineStyles.s66}>{'ABCD'[oi]})</span>{opt}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    {msg.features.quiz.currentAnswer !== null && (
+                                      <div style={inlineStyles.s67}>
+                                        <span style={featureStyleFunctions.s65({msg,T})}>
+                                          {msg.features.quiz.currentAnswer === msg.features.quiz.questions[msg.features.quiz.currentIdx].correct ? '✓ Correct!' : `✗ Incorrect — correct: ${'ABCD'[msg.features.quiz.questions[msg.features.quiz.currentIdx].correct]}`}
+                                        </span>
+                                        <div style={inlineStyles.s68}>
+                                          {msg.features.quiz.currentIdx > 0 && (
+                                            <button onClick={() => handleQuizNav(mi, 'prev')}
+                                              style={featureStyleFunctions.s66({T})}>
+                                              &larr; Prev
+                                            </button>
+                                          )}
+                                          {msg.features.quiz.currentIdx < msg.features.quiz.questions.length - 1 && (
+                                            <button onClick={() => handleQuizNav(mi, 'next')}
+                                              style={featureStyleFunctions.s67({T})}>
+                                              Next <ChevronRight size={12} />
+                                            </button>
+                                          )}
+                                          {msg.features.quiz.currentIdx === msg.features.quiz.questions.length - 1 && (
+                                            <span style={featureStyleFunctions.s68({T})}>Quiz complete!</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div style={featureStyleFunctions.s69({T})}>
+                                    <Loader2 size={18} style={inlineStyles.s69} />
+                                    Loading Quiz Questions...
+                                  </div>
+                                )
+                              )}
+
+                              {msg.activeFeature === 'flashcards' && (
+                                msg.features?.flashcards?.cards?.length > 0 ? (
+                                  <>
+                                    <div style={inlineStyles.s70}>
+                                      <span style={featureStyleFunctions.s70({T})}>Card {msg.features.flashcards.currentIdx + 1} of {msg.features.flashcards.cards.length}</span>
+                                      <button onClick={() => handleGenerateFeature(mi, 'flashcards')}
+                                        style={featureStyleFunctions.s71({T})}>
+                                        Regenerate
+                                      </button>
+                                    </div>
+                                    <div onClick={() => handleFlashcardFlip(mi)} style={inlineStyles.s71}>
+                                      <div style={featureStyleFunctions.s72({msg,T})}>
+                                        <div style={featureStyleFunctions.s73({T})}>
+                                          {msg.features.flashcards.flipped ? 'Answer' : 'Question — tap to reveal'}
+                                        </div>
+                                        <div style={featureStyleFunctions.s74({T,msg})}>
+                                          {msg.features.flashcards.flipped ? msg.features.flashcards.cards[msg.features.flashcards.currentIdx]?.back : msg.features.flashcards.cards[msg.features.flashcards.currentIdx]?.front}
+                                        </div>
+                                        {!msg.features.flashcards.flipped && <div style={featureStyleFunctions.s75({T})}>tap to flip</div>}
+                                      </div>
+                                    </div>
+                                    <div style={inlineStyles.s72}>
+                                      <button onClick={() => handleFlashcardNav(mi, 'prev')}
+                                        style={featureStyleFunctions.s76({T})}>
+                                        &larr; Prev
+                                      </button>
+                                      <button onClick={() => handleFlashcardNav(mi, 'next')}
+                                        style={featureStyleFunctions.s77({T})}>
+                                        Next &rarr;
+                                      </button>
+                                    </div>
+                                    <div style={inlineStyles.s73}>
+                                      {msg.features.flashcards.cards.map((_, i) => (
+                                        <div key={i} style={featureStyleFunctions.s78({msg,i,T})} />
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={featureStyleFunctions.s79({T})}>
+                                    <Loader2 size={18} style={inlineStyles.s74} />
+                                    Loading Flashcards...
+                                  </div>
+                                )
+                              )}
+
+                              {(msg.activeFeature === 'infographic' || isGeneratingFeature(mi, 'infographic')) && (
+                                msg.features?.infographic?.scene ? (
+                                  <div style={inlineStyles.s75}>
+                                    <InfographicCanvas
+                                      scene={msg.features.infographic.scene}
+                                      points={msg.features.infographic.points || []}
+                                      topicTitle={msg.features.infographic.topic || msg.features.infographic.scene?.title || 'Visual Summary'}
+                                      initialExpanded={true}
+                                      onRegenerate={() => handleGenerateFeature(mi, 'infographic')}
+                                      onClose={() => {
+                                        setMessages(prev => prev.map((m, i) => i === mi ? { ...m, activeFeature: null } : m));
+                                      }}
+                                    />
+                                  </div>
+                                ) : isGeneratingFeature(mi, 'infographic') ? (
+                                  <div style={inlineStyles.s76}>
+                                    <InfographicCanvas
+                                      scene={null}
+                                      isLoading={true}
+                                      topicTitle="Visual Summary"
+                                      initialExpanded={true}
+                                      onClose={() => {
+                                        setGenerating({ msgIdx: null, type: null });
+                                      }}
+                                    />
+                                  </div>
+                                ) : (msg.features?.infographic?.points?.length > 0 || msg.features?.infographic?.mermaid) ? (
+                                  <div style={inlineStyles.s77}>
+                                    <MermaidDiagram
+                                      chart={msg.features.infographic.mermaid}
+                                      points={msg.features.infographic.points}
+                                      chatHistory={messages}
+                                      diagramType={msg.features.infographic.diagramType || 'flowchart'}
+                                      onRegenerate={() => handleGenerateFeature(mi, 'infographic')}
+                                      onClose={() => {
+                                        setMessages(prev => prev.map((m, i) => i === mi ? { ...m, activeFeature: null } : m));
+                                      }}
+                                    />
+                                  </div>
+                                ) : null
+                              )}
+
+                              {msg.activeFeature === 'simpler' && (
+                                msg.features?.simpler?.text ? (
+                                  <div style={featureStyleFunctions.s80({T})}>
+                                    <div style={inlineStyles.s78}>
+                                      <span style={featureStyleFunctions.s81({T})}>SIMPLIFIED EXPLANATION</span>
+                                      <button onClick={() => handleGenerateFeature(mi, 'simpler')}
+                                        style={featureStyleFunctions.s82({T})}>
+                                        Regenerate
+                                      </button>
+                                    </div>
+                                    <div style={featureStyleFunctions.s83({T})}>
+                                      <div className="md-content">
+                                        {renderMarkdown(msg.features.simpler.text)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={featureStyleFunctions.s84({T})}>
+                                    <Loader2 size={18} style={inlineStyles.s79} />
+                                    Generating Simplified Explanation...
+                                  </div>
+                                )
+                              )}
+
+                              {msg.activeFeature === 'examples' && (
+                                msg.features?.examples?.text ? (
+                                  <div style={featureStyleFunctions.s85({T})}>
+                                    <div style={inlineStyles.s80}>
+                                      <span style={featureStyleFunctions.s86({T})}>CODE EXAMPLES</span>
+                                      <button onClick={() => handleGenerateFeature(mi, 'examples')}
+                                        style={featureStyleFunctions.s87({T})}>
+                                        Regenerate
+                                      </button>
+                                    </div>
+                                    <div style={featureStyleFunctions.s88({T})}>
+                                      <div className="md-content">
+                                        {renderMarkdown(msg.features.examples.text)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={featureStyleFunctions.s89({T})}>
+                                    <Loader2 size={18} style={inlineStyles.s81} />
+                                    Generating Code Examples...
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Suggestion Chips */}
+                        {!msg.local && (
+                          <div style={inlineStyles.s82}>
+                            {SUGGESTIONS.map(s => {
+                              const loading = isGeneratingFeature(mi, s.id);
+                              const isActive = msg.activeFeature === s.id;
+                              return (
+                                <button
+                                  key={s.id}
+                                  data-feature-button="true"
+                                  onClick={() => handleFeatureClick(mi, s.id)}
+                                  disabled={loading}
+                                  style={featureStyleFunctions.s90({isActive,s,loading})}
+                                >
+                                  {loading ? <Loader2 size={12} style={inlineStyles.s83} /> : <s.Icon size={12} />}
+                                  {loading ? 'Generating...' : s.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+              {/* Streaming Area */}
+              {streamingText && (
+                <div style={featureStyleFunctions.s91({msgMaxW})}>
+                  <div style={inlineStyles.s84}>
+                    <div style={featureStyleFunctions.s92({T})}>
+                      <Code2 size={14} color={T.amber} />
+                    </div>
+                    <div style={featureStyleFunctions.s93({T})}>
+                      VEDIKA
+                    </div>
+                  </div>
+                  <div style={featureStyleFunctions.s94({bubbleMaxW,isMobile})}>
+                    <div ref={streamElRef} style={inlineStyles.s85} />
+                    <Loader2 size={12} color="#38BDF8" style={inlineStyles.s86} />
+                  </div>
+                </div>
+              )}
+
+              {/* Generating Loader */}
+              {loading && !streamingText && (
+                <div style={featureStyleFunctions.s95({msgMaxW})}>
+                  <div style={inlineStyles.s87}>
+                    <div style={featureStyleFunctions.s96({T})}>
+                      <Code2 size={14} color={T.amber} />
+                    </div>
+                    <div style={featureStyleFunctions.s97({T})}>
+                      VEDIKA
+                    </div>
+                  </div>
+                  <div style={inlineStyles.s88}>
+                    <Loader2 size={16} color="#38BDF8" style={inlineStyles.s89} />
+                    <span style={inlineStyles.s90}>Thinking...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Errors Display */}
+              {err && (
+                <div style={featureStyleFunctions.s98({T})}>
+                  {err}
+                </div>
+              )}
+              
+              {/* ── UPLOAD ERROR ── */}
+              {uploadErr && (
+                <div style={featureStyleFunctions.s99({T})}>
+                  {uploadErr}
+                </div>
+              )}
+
+              {/* ── SESSION DOCUMENTS ── */}
+              {sessionDocs.length > 0 && (
+                <div style={featureStyleFunctions.s100({msgMaxW})}>
+                  {sessionDocs.map(doc => (
+                    <div key={doc.id} style={featureStyleFunctions.s101({T})}>
+                      <span style={featureStyleFunctions.s102({T})}>📄</span>
+                      <span style={featureStyleFunctions.s103({T})}>{doc.name}</span>
+                      <span style={featureStyleFunctions.s104({doc,T})}>
+                        ({doc.status === 'pending_ingestion' ? 'processing' : doc.status})
+                      </span>
+                      <button onClick={() => handleDeleteDoc(doc.id)} style={featureStyleFunctions.s105({T})}>
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+        {/* ── SCROLL FOR MORE BUTTON MATCHING REFERENCE IMAGE ── */}
+        {showScrollDown && (
+          <button
+            type="button"
+            onClick={() => {
+              if (chatRef.current) {
+                chatRef.current.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
+              }
+            }}
+            style={featureStyleFunctions.s106({isMobile})}
+            onMouseEnter={e => {
+              e.currentTarget.style.color = '#FFFFFF';
+              e.currentTarget.style.borderColor = '#06B6D4';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.color = '#CBD5E1';
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
+            }}
+          >
+            <ChevronDown size={14} color="#06B6D4" />
+            <span>Scroll for more</span>
+          </button>
+        )}
+
+        {/* ── CREATIVE FLOATING DYNAMIC OMNIBAR CONTAINER WITH COMPANION BLOB ── */}
+        <div
+          style={featureStyleFunctions.s107({isMobile})}
+        >
+          {/* Omnibar input row with toggle button + omnibar */}
+          <div
+            style={inlineStyles.s91}
+          >
+          {/* Full Creative Omnibar - Always active by default */}
+          <div
+              onMouseEnter={() => setIsInputHovered(true)}
+              onMouseLeave={() => setIsInputHovered(false)}
+              style={featureStyleFunctions.s108({isInputFocused,isMobile})}
+            >
+              {/* Attached PDF documents pills (if any) */}
+              {sessionDocs && sessionDocs.length > 0 && (
+                <div style={inlineStyles.s92}>
+                  {sessionDocs.map(doc => (
+                    <div key={doc.id} style={inlineStyles.s93}>
+                      <span>📄</span>
+                      <span style={inlineStyles.s94}>{doc.name}</span>
+                      {doc.status && doc.status !== 'completed' && <span style={inlineStyles.s95}>({doc.status})</span>}
+                      <button type="button" onClick={() => handleDeleteDoc(doc.id)} style={inlineStyles.s96}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Mention Dropdown Popup */}
+              {showMentionDropdown && filteredMentions.length > 0 && (
+                <div style={inlineStyles.s97}>
+                  <div style={inlineStyles.s98}>
+                    Coding Tutor Commands & Docs
+                  </div>
+                  {filteredMentions.map((opt, idx) => {
+                    const isSelected = idx === selectedMentionIndex;
+                    return (
+                      <div
+                        key={opt.id}
+                        onMouseEnter={() => setSelectedMentionIndex(idx)}
+                        style={featureStyleFunctions.s109({isSelected,opt})}
+                      >
+                        <div onClick={() => handleSelectMention(opt)} style={inlineStyles.s99}>
+                          <span style={inlineStyles.s100}>{opt.icon}</span>
+                          <div style={inlineStyles.s101}>
+                            <div style={inlineStyles.s102}>
+                              <span style={featureStyleFunctions.s110({opt})}>@ {opt.name}</span>
+                              <span style={inlineStyles.s103}>{opt.label}</span>
+                            </div>
+                            <div style={inlineStyles.s104}>{opt.desc}</div>
+                          </div>
+                        </div>
+                        {opt.isDoc && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (confirm(`Are you sure you want to permanently delete "${opt.label}" from your library?`)) {
+                                await handleLibraryDelete(opt.id);
+                              }
+                            }}
+                            style={inlineStyles.s105}
+                            title="Delete from library"
+                          >
+                            <Trash size={12} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {isMobile ? (
+                /* Mobile 2-Row Layout */
+                <>
+                  {/* Row 1: Full-Width Clean Textarea */}
+                  <div style={inlineStyles.s106}>
+                    <textarea
+                      ref={inputRef}
+                      value={topic}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setTopic(val);
+                        if (val.trim()) {
+                          setIsTyping(true);
+                          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                          typingTimerRef.current = setTimeout(() => {
+                            setIsTyping(false);
+                          }, 1500);
+                        } else {
+                          setIsTyping(false);
+                        }
+                        const selectionStart = e.target.selectionStart;
+                        const textBeforeCursor = val.slice(0, selectionStart);
+                        const atIndex = textBeforeCursor.lastIndexOf('@');
+                        
+                        if (atIndex !== -1 && !textBeforeCursor.slice(atIndex).includes(' ')) {
+                          const query = textBeforeCursor.slice(atIndex + 1);
+                          setMentionSearch(query);
+                          setShowMentionDropdown(true);
+                          setSelectedMentionIndex(0);
+                          if (query === '') {
+                            fetchAvailableDocs();
+                          }
+                        } else {
+                          setShowMentionDropdown(false);
+                        }
+                      }}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      placeholder="Ask Coding Tutor anything..."
+                      rows={1}
+                      onKeyDown={handleKeyDown}
+                      style={inlineStyles.s107}
+                    />
+                  </div>
+
+                  {/* Row 2: Bottom Action Row */}
+                  <div style={inlineStyles.s108}>
+                    {/* Left quick actions: Menu toggle, PDF & Voice */}
+                    <div style={inlineStyles.s109}>
+                      <button
+                        type="button"
+                        data-leftnav-toggle="true"
+                        onClick={() => {
+                          setShowLeftNav(prev => {
+                            if (!prev) setLeftNavView('menu');
+                            return !prev;
+                          });
+                        }}
+                        style={featureStyleFunctions.s111({showLeftNav})}
+                        title="Menu"
+                      >
+                        <PanelLeft size={16} />
+                      </button>
+
+                      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="application/pdf" style={inlineStyles.s110} />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        style={featureStyleFunctions.s112({uploading})}
+                        title="Upload PDF Context"
+                      >
+                        {uploading ? <Loader2 size={16} className="custom-spin" /> : <Paperclip size={16} />}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('voice')}
+                        style={inlineStyles.s111}
+                        title="Switch to Voice AI"
+                      >
+                        <Mic size={16} />
+                      </button>
+                    </div>
+
+                    {/* Right tools cluster: Config Popover, Send Button */}
+                    <div style={inlineStyles.s112}>
+                      <div style={inlineStyles.s113} ref={configDropdownRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsConfigOpen(prev => !prev)}
+                          style={inlineStyles.s114}
+                          title="Change learning mode & explanation depth"
+                        >
+                          <div style={featureStyleFunctions.s113({modeColors,mode,T})} />
+                          <span>{mode} &middot; {length}</span>
+                          <ChevronDown size={11} color="#94A3B8" style={featureStyleFunctions.s114({isConfigOpen})} />
+                        </button>
+
+                        {isConfigOpen && (
+                          <div style={inlineStyles.s115}>
+                            <div>
+                              <div style={inlineStyles.s116}>
+                                Learning Mode
+                              </div>
+                              <div style={inlineStyles.s117}>
+                                {MODES.map(m => {
+                                  const isSel = mode === m;
+                                  return (
+                                    <button
+                                      key={m}
+                                      type="button"
+                                      onClick={() => setMode(m)}
+                                      style={featureStyleFunctions.s115({isSel,modeColors,m})}
+                                    >
+                                      {m}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div style={inlineStyles.s118}>
+                                Explanation Depth
+                              </div>
+                              <div style={inlineStyles.s119}>
+                                {LENGTHS.map(l => {
+                                  const isSel = length === l;
+                                  return (
+                                    <button
+                                      key={l}
+                                      type="button"
+                                      onClick={() => setLength(l)}
+                                      style={featureStyleFunctions.s116({isSel})}
+                                    >
+                                      {l}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleSend}
+                        disabled={loading}
+                        style={featureStyleFunctions.s117({loading})}
+                      >
+                        {loading ? <Loader2 size={16} color="#fff" className="custom-spin" /> : <Send size={16} color="#fff" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Desktop & Laptop 1-Row Sleek Layout (Original cff79c0) */
+                <div style={inlineStyles.s120}>
+                  <button
+                    type="button"
+                    data-leftnav-toggle="true"
+                    onClick={() => {
+                      setShowLeftNav(prev => {
+                        if (!prev) setLeftNavView('menu');
+                        return !prev;
+                      });
+                    }}
+                    style={featureStyleFunctions.s118({showLeftNav})}
+                    title="Toggle Vedika Menu (Ctrl+B)"
+                  >
+                    <PanelLeft size={16} />
+                  </button>
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="application/pdf" style={inlineStyles.s121} />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    style={featureStyleFunctions.s119({uploading})}
+                    title="Upload PDF Context"
+                  >
+                    {uploading ? <Loader2 size={16} className="custom-spin" /> : <Paperclip size={16} />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('voice')}
+                    style={inlineStyles.s122}
+                    title="Switch to Voice AI"
+                  >
+                    <Mic size={16} />
+                  </button>
+
+                  {/* Textarea */}
+                  <div style={inlineStyles.s123}>
+                    <textarea
+                      ref={inputRef}
+                      value={topic}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setTopic(val);
+                        if (val.trim()) {
+                          setIsTyping(true);
+                          if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+                          typingTimerRef.current = setTimeout(() => {
+                            setIsTyping(false);
+                          }, 1500);
+                        } else {
+                          setIsTyping(false);
+                        }
+                        const selectionStart = e.target.selectionStart;
+                        const textBeforeCursor = val.slice(0, selectionStart);
+                        const atIndex = textBeforeCursor.lastIndexOf('@');
+                        
+                        if (atIndex !== -1 && !textBeforeCursor.slice(atIndex).includes(' ')) {
+                          const query = textBeforeCursor.slice(atIndex + 1);
+                          setMentionSearch(query);
+                          setShowMentionDropdown(true);
+                          setSelectedMentionIndex(0);
+                          if (query === '') {
+                            fetchAvailableDocs();
+                          }
+                        } else {
+                          setShowMentionDropdown(false);
+                        }
+                      }}
+                      onFocus={() => setIsInputFocused(true)}
+                      onBlur={() => setIsInputFocused(false)}
+                      placeholder="Ask a coding question, debug an algorithm, or type @ to attach PDF / docs..."
+                      rows={1}
+                      onKeyDown={handleKeyDown}
+                      style={inlineStyles.s124}
+                    />
+                  </div>
+
+                  {/* Right tools cluster: Mode & Depth + Send Button */}
+                  <div style={inlineStyles.s125}>
+                    <div style={inlineStyles.s126}>
+                      <button
+                        type="button"
+                        onClick={() => setIsConfigOpen(prev => !prev)}
+                        style={inlineStyles.s127}
+                        title="Change learning mode & explanation depth"
+                      >
+                        <div style={featureStyleFunctions.s120({modeColors,mode,T})} />
+                        <span>{mode} &middot; {length}</span>
+                        <ChevronDown size={11} color="#94A3B8" style={featureStyleFunctions.s121({isConfigOpen})} />
+                      </button>
+
+                      {isConfigOpen && (
+                        <div style={inlineStyles.s128}>
+                          <div>
+                            <div style={inlineStyles.s129}>
+                              Learning Mode
+                            </div>
+                            <div style={inlineStyles.s130}>
+                              {MODES.map(m => {
+                                const isSel = mode === m;
+                                return (
+                                  <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => setMode(m)}
+                                    style={featureStyleFunctions.s122({isSel,modeColors,m})}
+                                  >
+                                    {m}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={inlineStyles.s131}>
+                              Explanation Depth
+                            </div>
+                            <div style={inlineStyles.s132}>
+                              {LENGTHS.map(l => {
+                                const isSel = length === l;
+                                return (
+                                  <button
+                                    key={l}
+                                    type="button"
+                                    onClick={() => setLength(l)}
+                                    style={featureStyleFunctions.s123({isSel})}
+                                  >
+                                    {l}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={loading}
+                      style={featureStyleFunctions.s124({loading})}
+                    >
+                      {loading ? <Loader2 size={16} color="#fff" className="custom-spin" /> : <Send size={16} color="#fff" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )}
+      </div>
+
+          {/* Floating Sandbox Modal Overlay */}
+          {isPlaygroundOpen && (
+            <div
+              onClick={(e) => { if (e.target === e.currentTarget) setIsPlaygroundOpen(false); }}
+              style={featureStyleFunctions.s125({isMobile})}
+            >
+              {/* Floating Window Container */}
+              <div style={inlineStyles.s133}>
+                {/* Header */}
+                <div style={featureStyleFunctions.s126({isMobile})}>
+                  <div style={inlineStyles.s134}>
+                    <div style={inlineStyles.s135} />
+                    <span style={inlineStyles.s136}>
+                      Python Coding Sandbox
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsPlaygroundOpen(false)}
+                    style={inlineStyles.s137}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.3)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#F87171'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'; }}
+                    title="Close Python Sandbox"
+                    aria-label="Close Python Sandbox"
+                  >
+                    <X size={15} />
+                    <span>Close Sandbox</span>
+                  </button>
+                </div>
+                
+                {/* Playground Canvas Body */}
+                <div style={inlineStyles.s138}>
+                  <Playground 
+                    initialCode={`# Python Coding Sandbox\n# Write python code here and run it!\n\ndef greet(name):\n    print(f"Hello, {name}!")\n\ngreet("Seshu")\n`} 
+                    codeOverride={codeOverride}
+                    explanationOverride={explanationOverride}
+                    onTraceComplete={() => {
+                      setCodeOverride(null);
+                      setExplanationOverride(null);
+                    }}
+                    onCodeChange={setCurrentSandboxCode}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      
+    </>
+  );
+}

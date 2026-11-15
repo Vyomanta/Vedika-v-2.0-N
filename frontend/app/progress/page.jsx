@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ProgressPage from '@/components/ProgressPage';
-import { saveProgressToRedis, getProgressFromRedis } from '@/lib/frappe';
+import { saveProgressToRedis, getProgressFromRedis } from '@/features/progress/api/lms';
 
 export default function ProgressRoute() {
   const [completed, setCompleted] = useState({});

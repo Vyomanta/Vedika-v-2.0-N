@@ -1,6 +1,6 @@
 import { Outfit, Space_Grotesk, Cinzel, Poppins } from 'next/font/google';
-import './globals.css';
-import '@/components/MermaidDiagram.css';
+import '@/app/globals.css';
+import '@/features/diagrams/styles/MermaidDiagram.css';
 import LayoutWrapper from '@/components/LayoutWrapper';
 
 const outfit = Outfit({

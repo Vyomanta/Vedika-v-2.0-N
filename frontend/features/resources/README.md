@@ -1,0 +1,26 @@
+# resources
+
+Owned implementation files are listed below. Existing imports under components/ and lib/ are compatibility facades. Backend-specific code belongs in integrations or server repositories.
+
+- [components/ResourcesCheatSheets.jsx](components/ResourcesCheatSheets.jsx)
+- [components/ResourcesDSA.jsx](components/ResourcesDSA.jsx)
+- [components/ResourcesDSACompanyWise.jsx](components/ResourcesDSACompanyWise.jsx)
+- [components/ResourcesDSAResources.jsx](components/ResourcesDSAResources.jsx)
+- [components/ResourcesHub.jsx](components/ResourcesHub.jsx)
+- [components/ResourcesLibrary.jsx](components/ResourcesLibrary.jsx)
+- [components/ResourcesMarkdownCheatSheet.jsx](components/ResourcesMarkdownCheatSheet.jsx)
+- [data/all-cheatsheets.js](data/all-cheatsheets.js)
+- [server/routes/resources/categories/route.js](server/routes/resources/categories/route.js)
+- [server/routes/resources/list/route.js](server/routes/resources/list/route.js)
+- [styles/ResourcesCheatSheets.585f4ba6.styles.js](styles/ResourcesCheatSheets.585f4ba6.styles.js)
+- [styles/ResourcesCheatSheets.styles.js](styles/ResourcesCheatSheets.styles.js)
+- [styles/ResourcesDSA.a8d57a9f.styles.js](styles/ResourcesDSA.a8d57a9f.styles.js)
+- [styles/ResourcesDSA.styles.js](styles/ResourcesDSA.styles.js)
+- [styles/ResourcesDSACompanyWise.21c0f516.styles.js](styles/ResourcesDSACompanyWise.21c0f516.styles.js)
+- [styles/ResourcesDSACompanyWise.styles.js](styles/ResourcesDSACompanyWise.styles.js)
+- [styles/ResourcesHub.75455de2.styles.js](styles/ResourcesHub.75455de2.styles.js)
+- [styles/ResourcesHub.styles.js](styles/ResourcesHub.styles.js)
+- [styles/ResourcesLibrary.d61f18eb.styles.js](styles/ResourcesLibrary.d61f18eb.styles.js)
+- [styles/ResourcesLibrary.styles.js](styles/ResourcesLibrary.styles.js)
+- [styles/ResourcesMarkdownCheatSheet.cf48da38.styles.js](styles/ResourcesMarkdownCheatSheet.cf48da38.styles.js)
+- [styles/ResourcesMarkdownCheatSheet.styles.js](styles/ResourcesMarkdownCheatSheet.styles.js)

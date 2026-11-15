@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import './resources.css';
+import '@/app/resources/resources.css';
 import ResourcesHub from '@/components/ResourcesHub';
 import ResourcesLibrary from '@/components/ResourcesLibrary';
 import ResourcesCheatSheets from '@/components/ResourcesCheatSheets';

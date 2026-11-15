@@ -1,0 +1,68 @@
+
+        /* Staggered variable card slide-in */
+        .variable-card {
+          animation: card-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes card-enter {
+          from { opacity: 0; transform: scale(0.97) translateY(4px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        /* Custom scrollbar override for dark theme */
+        .sandbox-scroll::-webkit-scrollbar {
+          width: 5px;
+          height: 5px;
+        }
+        .sandbox-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.12) !important;
+          border-radius: 4px;
+        }
+        .sandbox-scroll::-webkit-scrollbar-thumb:hover {
+          background: #5B8CF8 !important;
+        }
+
+        /* Markdown rendering overrides for Sandbox Explanation Tab */
+        .tab-pane .md-content {
+          color: #E2E8F0 !important;
+        }
+        .tab-pane .md-content p {
+          color: #DDE3F2 !important;
+          line-height: 1.7 !important;
+          margin-bottom: 12px !important;
+        }
+        .tab-pane .md-content strong {
+          color: #FFFFFF !important;
+          font-weight: 700 !important;
+        }
+        .tab-pane .md-content em {
+          color: #F5A95B !important;
+        }
+        .tab-pane .md-content code {
+          background-color: #161B26 !important;
+          color: #F5A95B !important;
+          border: 1px solid rgba(255, 255, 255, 0.06) !important;
+          padding: 2px 6px !important;
+          border-radius: 4px !important;
+          font-family: monospace !important;
+          font-size: 12.5px !important;
+        }
+        .tab-pane .md-content ul, .tab-pane .md-content ol {
+          padding-left: 20px !important;
+          margin-bottom: 12px !important;
+          color: #DDE3F2 !important;
+        }
+        .tab-pane .md-content li {
+          margin-bottom: 6px !important;
+          color: #DDE3F2 !important;
+        }
+        .tab-pane .md-content h1,
+        .tab-pane .md-content h2,
+        .tab-pane .md-content h3,
+        .tab-pane .md-content h4,
+        .tab-pane .md-content h5 {
+          color: #FFFFFF !important;
+          margin-top: 16px !important;
+          margin-bottom: 8px !important;
+          font-weight: 700 !important;
+        }
+      

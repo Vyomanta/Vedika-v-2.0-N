@@ -1,0 +1,251 @@
+import { NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
+
+let redisInstance = null;
+let redisCircuitBreakerUntil = 0;
+
+function getRedis() {
+  if (Date.now() < redisCircuitBreakerUntil) {
+    return null;
+  }
+  if (!redisInstance && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      redisInstance = new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      });
+    } catch (e) {
+      console.warn('[MascotBridge API] Redis init notice:', e.message);
+    }
+  }
+  return redisInstance;
+}
+
+function handleRedisError(err, context = 'read') {
+  if (err?.message && (err.message.includes('limit exceeded') || err.message.includes('429'))) {
+    redisCircuitBreakerUntil = Date.now() + 10 * 60 * 1000; // 10 min cooldown
+    console.warn(`[MascotBridge API] Upstash Redis request limit reached. Switched cleanly to in-memory relay for 10m.`);
+  } else {
+    console.warn(`[MascotBridge API] Redis ${context} notice:`, err?.message || err);
+  }
+}
+
+// In-memory fallback buffers for local dev or if Redis is offline
+const inMemoryStore = {
+  commandsToBrowser: [],
+  eventsToMascot: [],
+  lastTabSeen: 0,
+  activeTabInfo: null,
+};
+
+function corsHeaders(request) {
+  const origin = request?.headers?.get('origin');
+  const isAllowed = !origin || 
+                    origin.includes('localhost') || 
+                    origin.includes('127.0.0.1') || 
+                    origin.endsWith('.vercel.app') ||
+                    origin.endsWith('.vedika.ai') || 
+                    origin === 'https://vedika.ai';
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? (origin || '*') : 'null',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Vary': 'Origin'
+  };
+}
+
+export async function OPTIONS(request) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+}
+
+export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const role = searchParams.get('role') || 'browser'; // 'browser' | 'mascot' | 'status'
+  const tabId = searchParams.get('tabId') || 'default_tab';
+  const currentPath = searchParams.get('path') || '/';
+
+  const redis = getRedis();
+  const now = Date.now();
+
+  try {
+    if (role === 'browser') {
+      // 1. Register active browser tab presence
+      inMemoryStore.lastTabSeen = now;
+      inMemoryStore.activeTabInfo = { tabId, currentPath, lastSeen: now };
+
+      let nextCommand = null;
+
+      if (redis) {
+        try {
+          await redis.set('mascot:active_tab', JSON.stringify({ tabId, currentPath, lastSeen: now }), { ex: 6 });
+          // Pop any pending command for browser
+          const cmdRaw = await redis.rpop('mascot:cmd:to_browser');
+          if (cmdRaw) {
+            nextCommand = typeof cmdRaw === 'string' ? JSON.parse(cmdRaw) : cmdRaw;
+          }
+        } catch (e) {
+          handleRedisError(e, 'read');
+        }
+      }
+
+      if (!nextCommand && inMemoryStore.commandsToBrowser.length > 0) {
+        nextCommand = inMemoryStore.commandsToBrowser.shift();
+      }
+
+      return NextResponse.json({
+        success: true,
+        role: 'browser',
+        command: nextCommand,
+      }, { headers: corsHeaders(request) });
+
+    } else if (role === 'mascot') {
+      // Mascot polling for events emitted by the browser tab
+      let hasActiveTab = false;
+      let nextEvent = null;
+
+      if (redis) {
+        try {
+          const tabData = await redis.get('mascot:active_tab');
+          hasActiveTab = Boolean(tabData);
+
+          const eventRaw = await redis.rpop('mascot:event:to_mascot');
+          if (eventRaw) {
+            nextEvent = typeof eventRaw === 'string' ? JSON.parse(eventRaw) : eventRaw;
+          }
+        } catch (e) {
+          handleRedisError(e, 'mascot read');
+        }
+      }
+
+      if (!hasActiveTab) {
+        hasActiveTab = (now - inMemoryStore.lastTabSeen) < 5000;
+      }
+      if (!nextEvent && inMemoryStore.eventsToMascot.length > 0) {
+        nextEvent = inMemoryStore.eventsToMascot.shift();
+      }
+
+      return NextResponse.json({
+        success: true,
+        role: 'mascot',
+        hasActiveTab,
+        event: nextEvent,
+      }, { headers: corsHeaders(request) });
+
+    } else {
+      // Status check
+      let hasActiveTab = (now - inMemoryStore.lastTabSeen) < 5000;
+      let tabInfo = inMemoryStore.activeTabInfo;
+
+      if (redis) {
+        try {
+          const tabData = await redis.get('mascot:active_tab');
+          if (tabData) {
+            hasActiveTab = true;
+            tabInfo = typeof tabData === 'string' ? JSON.parse(tabData) : tabData;
+          }
+        } catch (e) {}
+      }
+
+      return NextResponse.json({
+        success: true,
+        hasActiveTab,
+        tabInfo,
+      }, { headers: corsHeaders(request) });
+    }
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders(request) });
+  }
+}
+
+export async function POST(request) {
+  const redis = getRedis();
+
+  try {
+    const body = await request.json();
+    const source = body.source || 'mascot'; // 'mascot' | 'browser'
+    const payload = body.payload || body;
+    const type = body.type || payload.type || 'NAVIGATE_WEBAPP';
+
+    // Validate navigation targets to prevent open redirection
+    if (type === 'NAVIGATE_WEBAPP') {
+      const target = payload.route || payload.url || (typeof payload === 'string' ? payload : null);
+      if (typeof target === 'string') {
+        const isRelative = target.startsWith('/') && !target.startsWith('//');
+        const isLmsUrl = target.startsWith('http://localhost') || target.startsWith('http://127.0.0.1') || target.startsWith('https://vedika.ai') || target.startsWith('https://vedika-v20c.vercel.app');
+        if (!isRelative && !isLmsUrl) {
+          return NextResponse.json(
+            { error: 'Prohibited navigation destination.' },
+            { status: 400, headers: corsHeaders(request) }
+          );
+        }
+      }
+    }
+
+    const message = {
+      type,
+      payload: payload.payload || payload,
+      timestamp: Date.now(),
+      id: body.id || Math.random().toString(36).substring(2, 9),
+    };
+
+    let hasActiveTab = false;
+
+    if (source === 'mascot') {
+      // Command from desktop companion destined for active browser tab
+      if (redis) {
+        try {
+          await redis.lpush('mascot:cmd:to_browser', JSON.stringify(message));
+          await redis.ltrim('mascot:cmd:to_browser', 0, 10);
+          const tabData = await redis.get('mascot:active_tab');
+          hasActiveTab = Boolean(tabData);
+        } catch (e) {
+          handleRedisError(e, 'push');
+        }
+      }
+
+      inMemoryStore.commandsToBrowser.push(message);
+      if (inMemoryStore.commandsToBrowser.length > 10) inMemoryStore.commandsToBrowser.shift();
+      hasActiveTab = hasActiveTab || (Date.now() - inMemoryStore.lastTabSeen < 5000);
+
+      return NextResponse.json({
+        success: true,
+        delivered: true,
+        queued: true,
+        hasActiveTab,
+        messageId: message.id,
+      }, { headers: corsHeaders(request) });
+
+    } else {
+      // Event from browser tab destined for desktop mascot
+      if (type === 'TAB_UNLOADING' || type === 'TAB_CLOSED') {
+        inMemoryStore.lastTabSeen = 0;
+        inMemoryStore.activeTabInfo = null;
+        if (redis) {
+          try {
+            await redis.del('mascot:active_tab');
+          } catch (e) {}
+        }
+      }
+
+      if (redis) {
+        try {
+          await redis.lpush('mascot:event:to_mascot', JSON.stringify(message));
+          await redis.ltrim('mascot:event:to_mascot', 0, 10);
+        } catch (e) {
+          handleRedisError(e, 'event push');
+        }
+      }
+
+      inMemoryStore.eventsToMascot.push(message);
+      if (inMemoryStore.eventsToMascot.length > 10) inMemoryStore.eventsToMascot.shift();
+
+      return NextResponse.json({
+        success: true,
+        delivered: true,
+        messageId: message.id,
+      }, { headers: corsHeaders(request) });
+    }
+  } catch (err) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500, headers: corsHeaders() });
+  }
+}

@@ -1,0 +1,11 @@
+const path=require('node:path');
+require('dotenv').config({path:path.join(__dirname,'../.env.local')});
+require('dotenv').config({path:path.join(__dirname,'../.env')});
+const {backend}=require('../lib/backend.cjs');
+const required=['JWT_SECRET','GEMINI_API_KEY','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN','NEXT_PUBLIC_VOICE_WS_URL','GOOGLE_CLIENT_ID','GOOGLE_CLIENT_SECRET','B2_KEY_ID','B2_APPLICATION_KEY','B2_BUCKET_NAME'];
+required.push(...(backend()==='neon'?['DATABASE_URL']:['FRAPPE_URL','DB_HOST','DB_USER','DB_PASSWORD','DB_NAME']));
+const missing=required.filter(key=>!process.env[key]);
+if(process.env.JWT_SECRET&&process.env.JWT_SECRET.length<32)missing.push('JWT_SECRET (minimum 32 characters)');
+if(process.env.NEXT_PUBLIC_VOICE_WS_URL&&!/^wss:\/\//.test(process.env.NEXT_PUBLIC_VOICE_WS_URL))missing.push('NEXT_PUBLIC_VOICE_WS_URL (use wss:// for Vercel)');
+if(backend()==='neon'&&process.env.DATABASE_URL&&!/^postgres(?:ql)?:\/\//.test(process.env.DATABASE_URL))missing.push('DATABASE_URL (must be PostgreSQL)');
+if(missing.length){console.error('Deployment configuration still required:\n'+missing.map(k=>'- '+k).join('\n'));process.exitCode=1;}else console.log(`Required configuration names present for ${backend()}. Credential rotation and provider connectivity are separate checks.`);

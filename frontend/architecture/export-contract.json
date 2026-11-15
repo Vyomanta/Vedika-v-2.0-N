@@ -1,0 +1,365 @@
+{
+  "components/AdminSidebar.jsx": [
+    "default"
+  ],
+  "components/CategoryShowcaseCarousel.jsx": [
+    "default"
+  ],
+  "components/CodeFlowchartVisualizer.jsx": [
+    "default"
+  ],
+  "components/CodePuzzle.jsx": [
+    "default"
+  ],
+  "components/CodeVisualizer3D.jsx": [
+    "default"
+  ],
+  "components/CodingTutor.jsx": [
+    "default"
+  ],
+  "components/CompanionTabs.jsx": [
+    "TABS",
+    "default"
+  ],
+  "components/CourseEmotionsSlider.jsx": [
+    "default"
+  ],
+  "components/CourseInteractiveCanvas.jsx": [
+    "default"
+  ],
+  "components/CoursePage.jsx": [
+    "default"
+  ],
+  "components/CurriculumShowcase.jsx": [
+    "default"
+  ],
+  "components/Dashboard.jsx": [
+    "default"
+  ],
+  "components/FeaturesGrid.jsx": [
+    "default"
+  ],
+  "components/FeralUIFlowCanvas.jsx": [
+    "PRESETS",
+    "default"
+  ],
+  "components/Footer.jsx": [
+    "default"
+  ],
+  "components/GeneralTutor.jsx": [
+    "default"
+  ],
+  "components/GlacierBackground.jsx": [
+    "default"
+  ],
+  "components/Header.jsx": [
+    "default"
+  ],
+  "components/HeroMetrics.jsx": [
+    "default"
+  ],
+  "components/HeroSection.jsx": [
+    "default"
+  ],
+  "components/LayoutWrapper.jsx": [
+    "default"
+  ],
+  "components/LessonPage.jsx": [
+    "default"
+  ],
+  "components/MermaidDiagram.jsx": [
+    "default"
+  ],
+  "components/MobileNav.jsx": [
+    "default"
+  ],
+  "components/OverviewModal.jsx": [
+    "default"
+  ],
+  "components/PDFViewerModal.jsx": [
+    "default"
+  ],
+  "components/PacmanPagination.jsx": [
+    "default"
+  ],
+  "components/ParticlesBackground.jsx": [
+    "ParticlesSwarm",
+    "default"
+  ],
+  "components/Playground.jsx": [
+    "default"
+  ],
+  "components/PracticePlaygroundModal.jsx": [
+    "default"
+  ],
+  "components/PricingSection.jsx": [
+    "default"
+  ],
+  "components/ProgressPage.jsx": [
+    "default"
+  ],
+  "components/QuizzesAssignmentsWorkspace.jsx": [
+    "default"
+  ],
+  "components/ResourcesCheatSheets.jsx": [
+    "default"
+  ],
+  "components/ResourcesDSA.jsx": [
+    "default"
+  ],
+  "components/ResourcesDSACompanyWise.jsx": [
+    "default"
+  ],
+  "components/ResourcesDSAResources.jsx": [
+    "default"
+  ],
+  "components/ResourcesHub.jsx": [
+    "default"
+  ],
+  "components/ResourcesLibrary.jsx": [
+    "default"
+  ],
+  "components/ResourcesMarkdownCheatSheet.jsx": [
+    "default"
+  ],
+  "components/Sidebar.jsx": [
+    "default"
+  ],
+  "components/StitchAICursor.jsx": [
+    "default"
+  ],
+  "components/TOCSection.jsx": [
+    "default"
+  ],
+  "components/TechArchitecture.jsx": [
+    "default"
+  ],
+  "components/TopNavbar.jsx": [
+    "default"
+  ],
+  "components/UserBlobAvatar.jsx": [
+    "ALL_BLOB_EXPRESSIONS",
+    "default"
+  ],
+  "components/VedikaLabParticleBot.jsx": [
+    "default"
+  ],
+  "components/VedikaParticleBot.jsx": [
+    "default"
+  ],
+  "components/VideoAIExplainerCard.jsx": [
+    "default"
+  ],
+  "components/VideoPlayerWithAI.jsx": [
+    "default"
+  ],
+  "components/WavyLinesBackground.jsx": [
+    "default"
+  ],
+  "components/YouTubeTutorPanel.jsx": [
+    "default"
+  ],
+  "components/ZimCarousel3D.jsx": [
+    "default"
+  ],
+  "components/infographic/BottomToolbar.jsx": [
+    "BottomToolbar"
+  ],
+  "components/infographic/DrawingCursor.jsx": [
+    "DrawingCursor"
+  ],
+  "components/infographic/ExportControls.jsx": [
+    "ExportControls"
+  ],
+  "components/infographic/InfographicCanvas.jsx": [
+    "InfographicCanvas"
+  ],
+  "components/infographic/LayoutComponents.jsx": [
+    "getIconComponent",
+    "wrapSvgText",
+    "SvgElementNode",
+    "SvgConnectorPath"
+  ],
+  "components/infographic/SceneRenderer.jsx": [
+    "SceneRenderer"
+  ],
+  "components/infographic/renderers/CircularCycle.jsx": [
+    "CircularCycle"
+  ],
+  "components/infographic/renderers/ComparisonLayout.jsx": [
+    "ComparisonLayout"
+  ],
+  "components/infographic/renderers/DataChartLayout.jsx": [
+    "DataChartLayout"
+  ],
+  "components/infographic/renderers/EditorialLayout.jsx": [
+    "EditorialLayout"
+  ],
+  "components/infographic/renderers/HierarchyLayout.jsx": [
+    "HierarchyLayout"
+  ],
+  "components/infographic/renderers/HorizontalProcess.jsx": [
+    "HorizontalProcess"
+  ],
+  "components/infographic/renderers/RadialMap.jsx": [
+    "RadialMap"
+  ],
+  "components/infographic/renderers/ScientificIllustration.jsx": [
+    "ScientificIllustration"
+  ],
+  "components/infographic/renderers/TimelineLayout.jsx": [
+    "TimelineLayout"
+  ],
+  "components/labs/BiologyLab.jsx": [
+    "default"
+  ],
+  "components/labs/ChemistryLab.jsx": [
+    "default"
+  ],
+  "components/labs/DynamicMathVisualizer.jsx": [
+    "default"
+  ],
+  "components/labs/LabTutorDrawer.jsx": [
+    "default"
+  ],
+  "components/labs/MathEquationRenderer.jsx": [
+    "renderMathToHTML",
+    "wrapStandaloneBoxed",
+    "replaceBareLaTeXSymbols",
+    "parseLaTeXInText",
+    "KaTeXSpan",
+    "renderFlippedCharacters",
+    "renderTextWithMath",
+    "default"
+  ],
+  "components/labs/MathLab.jsx": [
+    "default"
+  ],
+  "components/labs/PhetSimViewer.jsx": [
+    "LAB_FEATURE_OPTIONS",
+    "default"
+  ],
+  "components/labs/PhysicsLab.jsx": [
+    "default"
+  ],
+  "components/voice-tutor/UnifiedSidebar.jsx": [
+    "default"
+  ],
+  "components/voice-tutor/VoiceAgentView.jsx": [
+    "default"
+  ],
+  "components/voice-tutor/VoiceChatMessages.jsx": [
+    "default"
+  ],
+  "components/voice-tutor/VoiceRobotVisualizer.jsx": [
+    "default"
+  ],
+  "lib/frappe.js": [
+    "buildFrappeUrl",
+    "sanitizeTitle",
+    "DEFAULT_COURSES",
+    "clientCache",
+    "invalidateCoursesCache",
+    "invalidateSyllabusCache",
+    "invalidateQuizzesCache",
+    "invalidateAssignmentsCache",
+    "invalidateSubmissionsCache",
+    "clearApiCache",
+    "frappeGet",
+    "frappePost",
+    "frappeRestGet",
+    "frappeRestPost",
+    "frappeRestPut",
+    "frappeRestDelete",
+    "getEnrolledCourses",
+    "getCourseCategories",
+    "addCourseCategory",
+    "getCourses",
+    "createCourse",
+    "updateCourse",
+    "deleteCourse",
+    "getCourseSyllabus",
+    "saveCourseSyllabus",
+    "isAdminUser",
+    "login",
+    "getBatches",
+    "createBatch",
+    "updateBatch",
+    "deleteBatch",
+    "enrollStudentInCourse",
+    "checkStudentEnrollment",
+    "getStudentEnrollments",
+    "DEFAULT_QUIZZES",
+    "getQuizzes",
+    "createQuiz",
+    "updateQuiz",
+    "deleteQuiz",
+    "getQuizSubmissions",
+    "submitQuizResponse",
+    "DEFAULT_ASSIGNMENTS",
+    "parseQuestionsList",
+    "getAssignments",
+    "createAssignment",
+    "updateAssignment",
+    "deleteAssignment",
+    "getAssignmentSubmissions",
+    "submitAssignmentResponse",
+    "gradeAssignmentSubmission",
+    "getJobs",
+    "createJob",
+    "updateJob",
+    "deleteJob",
+    "searchLMS",
+    "getNotifications",
+    "markNotificationRead",
+    "clearAllNotifications",
+    "getCertificates",
+    "createCertificate",
+    "deleteCertificate",
+    "getCertificateConfig",
+    "saveCertificateConfig",
+    "saveProgressToRedis",
+    "getProgressFromRedis",
+    "getLMSStudents"
+  ],
+  "lib/lms-data.js": [
+    "T",
+    "getTheme",
+    "setTheme",
+    "COURSE",
+    "ALL_LESSONS",
+    "geminiCall",
+    "MAX_TOKENS",
+    "classifyIntent",
+    "detectFeatureRequest",
+    "isMathExpression",
+    "evaluateMath",
+    "getGreetingResponse",
+    "getThanksResponse",
+    "MODE_INSTRUCTIONS",
+    "LENGTH_INSTRUCTIONS",
+    "TUTOR_SYSTEM",
+    "CODING_TUTOR_SYSTEM",
+    "QUIZ_SYSTEM",
+    "FLASHCARD_SYSTEM",
+    "INFOGRAPHIC_SYSTEM",
+    "SIMPLER_SYSTEM",
+    "EXAMPLES_SYSTEM",
+    "BUG_ANALYSIS_SYSTEM",
+    "BUG_TIPS_SYSTEM",
+    "BUG_FIX_METHODS_SYSTEM",
+    "FIX_EXPLANATION_SYSTEM",
+    "SOCRATIC_HELP_SYSTEM",
+    "buildChatPrompt",
+    "buildQuizPrompt",
+    "buildFlashcardsPrompt",
+    "buildInfographicPrompt",
+    "buildFeaturePrompt",
+    "parseQuizOutput",
+    "parseFlashcardsOutput",
+    "generateMermaidFromPoints",
+    "parseInfographicOutput",
+    "getCourseDetails",
+    "detectPromptInjection"
+  ]
+}

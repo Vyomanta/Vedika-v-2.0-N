@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QLabel, QProgressBar, QPushButton, QMessageBox
 )
 
-CORE_EXE_URL = "https://github.com/LMSWEBAPP/Vedika-v2.0/raw/main/vedika-desktop-pet/Vedika-Mascot.exe"
+CORE_EXE_URL = "https://github.com/Vyomanta/Vedika-v-2.0/raw/main/vedika-desktop-pet/Vedika-Mascot.exe"
 TARGET_EXE_NAME = "Vedika-Mascot.exe"
 
 class DownloadThread(QThread):
