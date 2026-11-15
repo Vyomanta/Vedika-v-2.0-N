@@ -1,5 +1,6 @@
 import importlib.util
 import json
+from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
 import sys
@@ -57,6 +58,12 @@ class StartupSafetyTests(unittest.TestCase):
         installer=types.ModuleType("frappe.installer")
         def new_site(**kwargs):
             self.assertIn("sites_path",initialized)
+            self.assertEqual(Path.cwd(), Path(initialized["sites_path"]))
+            # Exercise the same relative log destinations as Frappe, rather
+            # than mocking away the filesystem behavior that failed on Render.
+            for filename in ("../logs/database.log", "lms.render/logs/database.log"):
+                handler=RotatingFileHandler(filename)
+                handler.close()
             self.assertEqual(kwargs["db_name"],"legacy_frappe_core")
             self.assertFalse(kwargs["setup_db"])
         installer._new_site=MagicMock(side_effect=new_site)

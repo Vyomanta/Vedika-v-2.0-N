@@ -21,6 +21,7 @@ def classify(tables):
 
 def write_config(core):
     sites = Path("sites")
+    Path("logs").mkdir(parents=True, exist_ok=True)
     (sites / "lms.render" / "logs").mkdir(parents=True, exist_ok=True)
     origins = [v.strip() for v in os.environ.get("FRONTEND_URL", "").split(",") if v.strip()]
     config = {"db_host": os.environ["DB_HOST"], "db_port": int(os.environ.get("DB_PORT", "4000")),
@@ -60,11 +61,19 @@ def prepare():
             raise RuntimeError("Set an administrator password of at least 12 characters before initialization.")
         # Match Bench's new-site command: avoid loading installed-app metadata
         # from a database whose bootstrap tables do not exist yet.
-        frappe.init("lms.render", sites_path=str(Path("sites").resolve()), new_site=True)
-        _new_site(db_name=core, site="lms.render", db_user=config["db_user"], db_password=config["db_password"],
-                  db_host=config["db_host"], db_port=config["db_port"], db_type="mariadb", admin_password=password,
-                  install_apps=["payments", "lms"], setup_db=False, force=True)
-        frappe.destroy()
+        bench_root = Path.cwd()
+        sites_path = (bench_root / "sites").resolve()
+        # Bench executes framework commands from sites/. Frappe's logger and
+        # several installer operations use paths relative to this directory.
+        os.chdir(sites_path)
+        try:
+            frappe.init("lms.render", sites_path=str(sites_path), new_site=True)
+            _new_site(db_name=core, site="lms.render", db_user=config["db_user"], db_password=config["db_password"],
+                      db_host=config["db_host"], db_port=config["db_port"], db_type="mariadb", admin_password=password,
+                      install_apps=["payments", "lms"], setup_db=False, force=True)
+        finally:
+            frappe.destroy()
+            os.chdir(bench_root)
         write_config(core)
     else:
         print("Complete Frappe core schema found; continuing with migrations.", flush=True)

@@ -2,6 +2,7 @@
 set -euo pipefail
 export MALLOC_ARENA_MAX=2
 export PORT="${PORT:-8000}"
+export FRAPPE_STREAM_LOGGING=1
 redis-server --daemonize yes
 until redis-cli ping | grep -q PONG; do sleep 1; done
 python3 /home/frappe/dummy_server.py &
@@ -24,4 +25,4 @@ kill "$DUMMY_PID" 2>/dev/null || true
 wait "$DUMMY_PID" 2>/dev/null || true
 trap - EXIT
 # Production WSGI server; no development reloader or bench development server.
-exec ./env/bin/gunicorn --bind "0.0.0.0:$PORT" --workers 1 --threads 4 --timeout 120 frappe_wsgi:application
+exec ./env/bin/gunicorn --chdir sites --pythonpath /home/frappe/frappe-bench --bind "0.0.0.0:$PORT" --workers 1 --threads 4 --timeout 120 frappe_wsgi:application
