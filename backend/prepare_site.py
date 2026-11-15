@@ -58,6 +58,9 @@ def prepare():
         password = os.environ.get("ADMIN_PASSWORD") or os.environ.get("SUPER_ADMIN_PASSWORD")
         if not password or len(password) < 12:
             raise RuntimeError("Set an administrator password of at least 12 characters before initialization.")
+        # Match Bench's new-site command: avoid loading installed-app metadata
+        # from a database whose bootstrap tables do not exist yet.
+        frappe.init("lms.render", new_site=True)
         _new_site(db_name=core, site="lms.render", db_user=config["db_user"], db_password=config["db_password"],
                   db_host=config["db_host"], db_port=config["db_port"], db_type="mariadb", admin_password=password,
                   install_apps=["payments", "lms"], setup_db=False, force=True)

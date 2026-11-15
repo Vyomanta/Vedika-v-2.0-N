@@ -24,4 +24,4 @@ kill "$DUMMY_PID" 2>/dev/null || true
 wait "$DUMMY_PID" 2>/dev/null || true
 trap - EXIT
 # Production WSGI server; no development reloader or bench development server.
-exec ./env/bin/gunicorn --bind "0.0.0.0:$PORT" --workers 1 --threads 4 --timeout 120 frappe.app:application
+exec ./env/bin/gunicorn --bind "0.0.0.0:$PORT" --workers 1 --threads 4 --timeout 120 frappe_wsgi:application
