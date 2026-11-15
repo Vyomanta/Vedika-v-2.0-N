@@ -1,23 +1,22 @@
+"""Expose the port during startup without advertising false readiness."""
 import http.server
-import socketserver
+import os
+from functools import partial
 
-PORT = 8000
-
-class Handler(http.server.SimpleHTTPRequestHandler):
+class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        body = b'{"status":"initializing","ready":false}'
+        self.send_response(503)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Retry-After", "10")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(b"Database is initializing. Please refresh in a few minutes.")
-        
+        self.wfile.write(body)
+
     def do_HEAD(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
+        self.send_response(503)
         self.end_headers()
 
-# Allow immediate rebinding to the port after shutdown
-socketserver.TCPServer.allow_reuse_address = True
-
-with socketserver.TCPServer(("", PORT), Handler) as httpd:
-    print("Serving dummy server on port", PORT)
-    httpd.serve_forever()
+if __name__ == "__main__":
+    http.server.ThreadingHTTPServer.allow_reuse_address = True
+    http.server.ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8000"))), Handler).serve_forever()

@@ -17,7 +17,7 @@ export function getFrappeDb() {
       port: parseInt(process.env.DB_PORT || '4000', 10),
       user,
       password,
-      database: process.env.DB_NAME || 'test',
+      database: process.env.FRAPPE_DB_NAME || `${process.env.DB_NAME || 'test'}_frappe_core`,
       ssl: process.env.DB_SSL === 'false' ? undefined : { minVersion: 'TLSv1.2', rejectUnauthorized: true },
       waitForConnections: true,
       connectionLimit: 5,

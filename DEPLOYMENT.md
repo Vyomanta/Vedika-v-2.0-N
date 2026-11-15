@@ -51,3 +51,9 @@ Redeploy the Frappe backend and ensure grant_question_perm.py succeeds before ex
 Remaining production acceptance includes live OAuth/Frappe session behavior, organization administrator provisioning, course/enrollment permissions, B2 uploads and worker ingestion, authenticated full-duplex voice/barge-in, and backup/restore testing. Existing metadata-only organization creation does not itself provision backend user accounts. These are release blockers for a blanket production-readiness claim.
 
 Progress now uses tenant-scoped durable SQL records instead of email-only Redis keys shared across releases. Export and import existing Redis progress into the correct tenant explicitly before go-live; ambiguous historical tenant ownership must not be guessed. Notification read receipts are per user, including broadcast notifications.
+
+## Isolated Frappe core database
+
+The Frappe runtime and its direct user/course adapter now use FRAPPE_DB_NAME, defaulting to DB_NAME + `_frappe_core`. DB_NAME continues to own the existing Vedika application records, RAG queue, and legacy source data. The startup initializes only an empty separate core schema; an incomplete existing core schema fails closed and is never wiped. Existing legacy account/password hashes and courses are imported additively after core installation. Startup migrations must succeed, and the temporary HTTP server returns 503 until the real Frappe WSGI server starts.
+
+The Frappe, LMS, and Payments sources are pinned to matching version-16 revisions in the Dockerfile. Native/Neon behavior and database selection are unchanged.

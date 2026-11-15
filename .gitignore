@@ -114,3 +114,6 @@ test-results/
 /frontend/lib/organizations_data.json
 **/user_profile.json
 
+
+# Exported environment files are private too
+*.env

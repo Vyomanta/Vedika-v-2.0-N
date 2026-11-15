@@ -85,7 +85,7 @@ export async function POST(request) {
           port: Number(process.env.DB_PORT) || 4000,
           user: process.env.DB_USER,
           password: process.env.DB_PASSWORD,
-          database: process.env.DB_NAME || 'test',
+          database: process.env.FRAPPE_DB_NAME || `${process.env.DB_NAME || 'test'}_frappe_core` || 'test',
           ssl: process.env.DB_SSL === 'false' ? undefined : { rejectUnauthorized: true }
         });
 

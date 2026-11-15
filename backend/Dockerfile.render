@@ -9,17 +9,22 @@ USER frappe
 WORKDIR /home/frappe
 
 # Initialize the bench during the build phase (no Redis/DB required for file prep)
-RUN bench init --skip-redis-config-generation frappe-bench
+RUN bench init --frappe-branch version-16 --skip-redis-config-generation frappe-bench
 
 WORKDIR /home/frappe/frappe-bench
+RUN git -C apps/frappe fetch origin 49789a1711d4dde2be9c6888efe35651465f4b64 --depth 1 && git -C apps/frappe checkout 49789a1711d4dde2be9c6888efe35651465f4b64
 
 # Clone and install Payments & LMS apps at build time
-RUN git clone https://github.com/frappe/payments.git apps/payments --depth 1 \
+RUN git clone --branch version-16 https://github.com/frappe/payments.git apps/payments --depth 1 \
+    && git -C apps/payments fetch origin 9e842a473a8f4ec70a9ff06a3e067d10f98d26ed --depth 1 \
+    && git -C apps/payments checkout 9e842a473a8f4ec70a9ff06a3e067d10f98d26ed \
     && rm -f apps/payments/package.json \
     && ./env/bin/pip install -e ./apps/payments \
     && ./env/bin/pip cache purge
 
-RUN git clone https://github.com/frappe/lms.git apps/lms --depth 1 \
+RUN git clone --branch version-16 https://github.com/frappe/lms.git apps/lms --depth 1 \
+    && git -C apps/lms fetch origin 0264da45e1644dc9b937620f6220d67749cb0277 --depth 1 \
+    && git -C apps/lms checkout 0264da45e1644dc9b937620f6220d67749cb0277 \
     && rm -rf apps/lms/frontend apps/lms/package.json \
     && ./env/bin/pip install -e ./apps/lms \
     && ./env/bin/pip cache purge
@@ -56,6 +61,8 @@ COPY --chown=frappe:frappe backend/queue_worker.py /home/frappe/queue_worker.py
 COPY --chown=frappe:frappe backend/database_connection.py /home/frappe/database_connection.py
 COPY --chown=frappe:frappe backend/requirements.txt /home/frappe/requirements.txt
 RUN /home/frappe/frappe-bench/env/bin/pip install -r /home/frappe/requirements.txt
+COPY --chown=frappe:frappe backend/prepare_site.py /home/frappe/prepare_site.py
+COPY --chown=frappe:frappe backend/import_legacy.py /home/frappe/import_legacy.py
 COPY --chown=frappe:frappe backend/init-render-web.sh /home/frappe/init-render-web.sh
 RUN chmod +x /home/frappe/init-render-web.sh
 

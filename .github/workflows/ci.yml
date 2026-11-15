@@ -42,3 +42,5 @@ jobs:
           node tests/http-smoke.cjs
           npm run test:browser
       - run: python -m compileall -q backend
+
+      - run: python -m unittest discover -s backend/tests -v
