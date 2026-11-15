@@ -6,7 +6,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.modules.setdefault("pymysql", types.ModuleType("pymysql"))
 spec = importlib.util.spec_from_file_location("prepare_site", Path(__file__).parents[1] / "prepare_site.py")
@@ -38,6 +38,36 @@ class StartupSafetyTests(unittest.TestCase):
                 self.assertEqual(config["db_password"],env["DB_PASSWORD"])
                 self.assertEqual(config["db_name"],"test_frappe_core")
                 self.assertEqual(len(config["allow_cors"]),2)
+            finally:
+                os.chdir(old)
+
+    def test_empty_bootstrap_uses_real_sites_directory_and_separate_database(self):
+        env={"DB_HOST":"db.invalid", "DB_NAME":"legacy", "DB_USER":"fixture", "DB_PASSWORD":"fixture",
+             "ENCRYPTION_KEY":"fixture-only", "SUPER_ADMIN_PASSWORD":"fixture-password-for-tests-only"}
+        connection=MagicMock()
+        connection.cursor.return_value.__enter__.return_value.fetchall.return_value=[]
+        fake_frappe=types.ModuleType("frappe")
+        fake_frappe.destroy=MagicMock()
+        initialized={}
+        def init(site, **kwargs):
+            initialized.update(kwargs)
+            self.assertTrue((Path(kwargs["sites_path"])/"apps.txt").exists())
+            self.assertTrue(kwargs["new_site"])
+        fake_frappe.init=init
+        installer=types.ModuleType("frappe.installer")
+        def new_site(**kwargs):
+            self.assertIn("sites_path",initialized)
+            self.assertEqual(kwargs["db_name"],"legacy_frappe_core")
+            self.assertFalse(kwargs["setup_db"])
+        installer._new_site=MagicMock(side_effect=new_site)
+        old=os.getcwd()
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ,env), patch.dict(sys.modules,{"frappe":fake_frappe,"frappe.installer":installer}), patch.object(module.pymysql,"connect",return_value=connection,create=True):
+            try:
+                os.chdir(folder)
+                Path("sites").mkdir()
+                Path("sites/apps.txt").write_text("frappe\n")
+                module.prepare()
+                installer._new_site.assert_called_once()
             finally:
                 os.chdir(old)
 
