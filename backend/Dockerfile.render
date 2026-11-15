@@ -40,6 +40,10 @@ RUN python3 /home/frappe/frappe-bench/patch_schemas.py && rm /home/frappe/frappe
 COPY --chown=frappe:frappe backend/patch_statement_time.py /home/frappe/frappe-bench/patch_statement_time.py
 RUN python3 /home/frappe/frappe-bench/patch_statement_time.py && rm /home/frappe/frappe-bench/patch_statement_time.py
 
+# TiDB exposes MySQL generation_expression, not MariaDB is_generated.
+COPY --chown=frappe:frappe backend/patch_tidb_metadata.py /home/frappe/patch_tidb_metadata.py
+RUN python3 /home/frappe/patch_tidb_metadata.py /home/frappe/frappe-bench/apps/frappe/frappe/database/mariadb/mysqlclient.py
+
 # Copy and execute API patching script to add Google OAuth endpoint
 COPY --chown=frappe:frappe backend/patch_api.py /home/frappe/frappe-bench/patch_api.py
 RUN python3 /home/frappe/frappe-bench/patch_api.py && rm /home/frappe/frappe-bench/patch_api.py
