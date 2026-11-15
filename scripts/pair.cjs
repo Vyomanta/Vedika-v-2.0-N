@@ -34,6 +34,8 @@ function inventory(directory){
 
 function run(executable,args,cwd=root,extraEnv={}){const value=cp.spawnSync(executable,args,{cwd,stdio:'inherit',env:{...process.env,...extraEnv},shell:process.platform==='win32'&&executable==='npm'});if(value.status!==0)throw new Error(`${executable} ${args.join(' ')} failed.`);}
 function git(args,cwd=root){return cp.execFileSync('git',args,{cwd,encoding:'utf8'}).trim();}
+function sourceFingerprint(folder){return crypto.createHash('sha256').update(JSON.stringify([...inventory(folder)].sort())).digest('hex');}
+function requireClean(){for(const folder of [root,peer])if(git(['status','--porcelain'],folder))throw new Error('Source changed during release. Commit/reconcile the edits and rerun the paired release.');}
 function verifyPeer(){
  if(!fs.existsSync(path.join(peer,'.git')))throw new Error('Peer repository missing. Supply --peer <path>.');
  const peerIdentity=JSON.parse(fs.readFileSync(path.join(peer,'frontend/deployment.json'),'utf8'));
@@ -67,6 +69,7 @@ function sync(){
 try{
  if(command==='guard'){
   if(process.env.VEDIKA_PAIR_RELEASE!=='1')throw new Error('Use node scripts/pair.cjs release to validate and push BOTH repositories.');
+  requireClean();
   check();
  }else if(command==='check')check();
  else if(command==='sync')sync();
@@ -75,10 +78,12 @@ try{
   console.log('Installed paired-release pre-push hooks in both repositories.');
  }else if(command==='release'){
   check();
+  const fingerprint=sourceFingerprint(root);
   for(const folder of [root,peer]){
    run('npm',['run','check'],path.join(folder,'frontend'));
    run('npm',['audit','--audit-level=high'],path.join(folder,'frontend'));
   }
+  if(sourceFingerprint(root)!==fingerprint||sourceFingerprint(peer)!==fingerprint)throw new Error('Shared source changed while validation was running. No release commit was created; rerun the checks.');
   const messageIndex=process.argv.indexOf('--message');
   const message=messageIndex>=0?process.argv[messageIndex+1]:'feat: synchronize validated Vedika feature release';
   for(const folder of [root,peer]){
@@ -87,6 +92,7 @@ try{
    run('git',['fetch','origin','main'],folder);
    run('git',['merge-base','--is-ancestor','origin/main','HEAD'],folder);
   }
+  requireClean();
   // Separate GitHub repositories cannot be updated atomically. Always verify both destinations.
   const results=[];
   for(const folder of [root,peer]){

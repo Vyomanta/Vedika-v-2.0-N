@@ -79,6 +79,35 @@ class StartupSafetyTests(unittest.TestCase):
             finally:
                 os.chdir(old)
 
+    def test_partial_install_resumes_without_bootstrapping_or_resetting_accounts(self):
+        env={"DB_HOST":"db.invalid", "DB_NAME":"legacy", "DB_USER":"fixture", "DB_PASSWORD":"fixture",
+             "ENCRYPTION_KEY":"fixture-only", "SUPER_ADMIN_PASSWORD":"fixture-password-for-tests-only"}
+        for installed, missing in (([],["frappe","payments","lms"]),(["frappe"],["payments","lms"]),(["frappe","payments","lms"],[])):
+            with self.subTest(installed=installed):
+                connection=MagicMock()
+                connection.cursor.return_value.__enter__.return_value.fetchall.return_value=[(name,) for name in module.BOOTSTRAP_TABLES]
+                fake=types.ModuleType("frappe")
+                fake.init=MagicMock()
+                fake.connect=MagicMock()
+                fake.destroy=MagicMock()
+                fake.get_installed_apps=MagicMock(return_value=installed)
+                fake.db=types.SimpleNamespace(commit=MagicMock())
+                fake.conf=types.SimpleNamespace(admin_password=None)
+                installer=types.ModuleType("frappe.installer")
+                installer.install_app=MagicMock()
+                installer._new_site=MagicMock(side_effect=AssertionError("A nonempty schema must never be bootstrapped again"))
+                old=os.getcwd()
+                with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ,env), patch.dict(sys.modules,{"frappe":fake,"frappe.installer":installer}), patch.object(module.pymysql,"connect",return_value=connection,create=True):
+                    try:
+                        os.chdir(folder)
+                        module.prepare()
+                        self.assertEqual([call.args[0] for call in installer.install_app.call_args_list],missing)
+                        installer._new_site.assert_not_called()
+                        if "frappe" in installed:
+                            self.assertIsNone(fake.conf.admin_password)
+                    finally:
+                        os.chdir(old)
+
     def test_placeholder_never_claims_readiness(self):
         source=(Path(__file__).parents[1]/"dummy_server.py").read_text()
         self.assertNotIn("self.send_response(200)",source)
