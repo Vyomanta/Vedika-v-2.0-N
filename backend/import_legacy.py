@@ -44,6 +44,23 @@ try:
                 frappe.get_doc({"doctype":"LMS Category", "category":doc.category}).insert(ignore_permissions=True)
         doc.insert(ignore_permissions=True, set_name=row["name"])
     frappe.db.commit()
+    # Keep existing assessment/RAG relationship queries connected to live LMS
+    # data after separating the framework schema from application storage.
+    # Original empty relation tables are archived, never dropped.
+    quote = lambda value: "`" + value.replace("`", "``") + "`"
+    legacy = os.environ["DB_NAME"]
+    core = frappe.conf.db_name
+    with source.cursor() as cursor:
+        for relation in ("tabCourse Instructor", "tabLMS Enrollment"):
+            cursor.execute("SELECT TABLE_TYPE AS table_type FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s", (legacy,relation))
+            metadata = cursor.fetchone()
+            if metadata and metadata["table_type"] == "BASE TABLE":
+                cursor.execute("SELECT COUNT(*) AS count FROM " + quote(legacy) + "." + quote(relation))
+                if cursor.fetchone()["count"]:
+                    raise RuntimeError("Legacy course relationships require explicit import before linking to Frappe core.")
+                archive = "_vedika_legacy_" + relation.replace(" ", "_")
+                cursor.execute("RENAME TABLE " + quote(legacy) + "." + quote(relation) + " TO " + quote(legacy) + "." + quote(archive))
+            cursor.execute("CREATE OR REPLACE SQL SECURITY INVOKER VIEW " + quote(legacy) + "." + quote(relation) + " AS SELECT * FROM " + quote(core) + "." + quote(relation))
     print("Additive legacy account/course import completed; source records and existing destination accounts preserved.")
 finally:
     source.close()

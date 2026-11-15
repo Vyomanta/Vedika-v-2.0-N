@@ -11,11 +11,7 @@ trap 'kill "$DUMMY_PID" 2>/dev/null || true' EXIT
 cd /home/frappe/frappe-bench
 # JSON serialization, isolated initialization, and schema validation are owned by
 # this helper. It never drops existing tables or initializes the legacy database.
-./env/bin/python /home/frappe/prepare_site.py
-bench use lms.render
-bench --site lms.render migrate
-bench --site lms.render execute "exec(open('/home/frappe/import_legacy.py').read())"
-bench --site lms.render execute "exec(open('/home/frappe/grant_question_perm.py').read())"
+./env/bin/python /home/frappe/bootstrap_runner.py
 if [ "${QUEUE_WORKER_CONCURRENCY:-1}" -gt 0 ]; then
  for i in $(seq 1 "${QUEUE_WORKER_CONCURRENCY:-1}"); do
   ./env/bin/python /home/frappe/queue_worker.py &

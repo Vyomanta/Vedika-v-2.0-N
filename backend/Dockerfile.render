@@ -66,6 +66,7 @@ COPY --chown=frappe:frappe backend/database_connection.py /home/frappe/database_
 COPY --chown=frappe:frappe backend/requirements.txt /home/frappe/requirements.txt
 RUN /home/frappe/frappe-bench/env/bin/pip install -r /home/frappe/requirements.txt
 COPY --chown=frappe:frappe backend/frappe_wsgi.py /home/frappe/frappe-bench/frappe_wsgi.py
+COPY --chown=frappe:frappe backend/bootstrap_runner.py /home/frappe/bootstrap_runner.py
 COPY --chown=frappe:frappe backend/prepare_site.py /home/frappe/prepare_site.py
 COPY --chown=frappe:frappe backend/import_legacy.py /home/frappe/import_legacy.py
 COPY --chown=frappe:frappe backend/init-render-web.sh /home/frappe/init-render-web.sh

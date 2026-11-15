@@ -18,6 +18,7 @@ class StartupSafetyTests(unittest.TestCase):
     def test_legacy_user_table_is_not_a_complete_site(self):
         self.assertEqual(module.classify({"tabUser", "tabLMS Course"}), "incomplete")
         self.assertEqual(module.classify(set()), "empty")
+        self.assertEqual(module.classify(module.BOOTSTRAP_TABLES), "bootstrap")
         self.assertEqual(module.classify(module.CORE_TABLES), "ready")
 
     def test_legacy_database_cannot_be_used_as_bootstrap_target(self):

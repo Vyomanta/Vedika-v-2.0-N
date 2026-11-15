@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 import pymysql
 
+BOOTSTRAP_TABLES = {"tabDocType", "tabDocField", "tabDocPerm", "tabDefaultValue", "tabSingles", "__Auth"}
 CORE_TABLES = {"tabUser", "tabDefaultValue", "tabDocType", "tabDocField", "tabDocPerm", "tabSingles", "tabModule Def"}
 
 def database_names(env):
@@ -17,7 +18,7 @@ def database_names(env):
 def classify(tables):
     if not tables:
         return "empty"
-    return "ready" if CORE_TABLES.issubset(tables) else "incomplete"
+    return "ready" if CORE_TABLES.issubset(tables) else "bootstrap" if BOOTSTRAP_TABLES.issubset(tables) else "incomplete"
 
 def write_config(core):
     sites = Path("sites")
@@ -76,7 +77,32 @@ def prepare():
             os.chdir(bench_root)
         write_config(core)
     else:
-        print("Complete Frappe core schema found; continuing with migrations.", flush=True)
+        # Standard app installation is idempotent and imports missing DocTypes.
+        # Resume after a replaced container without re-running bootstrap SQL.
+        import frappe
+        from frappe.installer import install_app
+        bench_root = Path.cwd()
+        sites_path = (bench_root / "sites").resolve()
+        os.chdir(sites_path)
+        try:
+            frappe.init("lms.render", sites_path=str(sites_path), new_site=True)
+            frappe.connect()
+            installed = set(frappe.get_installed_apps())
+            if "frappe" not in installed:
+                password = os.environ.get("ADMIN_PASSWORD") or os.environ.get("SUPER_ADMIN_PASSWORD")
+                if not password or len(password) < 12:
+                    raise RuntimeError("An explicit administrator password is required to resume core installation.")
+                frappe.conf.admin_password = password
+            for app in ("frappe", "payments", "lms"):
+                if app not in installed:
+                    print(f"Resuming standard installation for {app}; existing tables are preserved.", flush=True)
+                    install_app(app, set_as_patched=True, force=False)
+                    frappe.db.commit()
+            print("Frappe application installation verified.", flush=True)
+        finally:
+            frappe.destroy()
+            os.chdir(bench_root)
+        write_config(core)
 
 if __name__ == "__main__":
     prepare()
