@@ -105,6 +105,48 @@ def prepare():
                     print(f"Resuming standard installation for {app}; existing tables are preserved.", flush=True)
                     install_app(app, set_as_patched=True, force=False)
                     frappe.db.commit()
+            if hasattr(frappe.db, "exists") and frappe.db.exists("DocType", "User"):
+                if not frappe.db.exists("User", "Guest"):
+                    try:
+                        guest = frappe.new_doc("User")
+                        guest.name = "Guest"
+                        guest.email = "guest@example.com"
+                        guest.first_name = "Guest"
+                        guest.enabled = 1
+                        guest.user_type = "Website User"
+                        guest.append("roles", {"role": "Guest"})
+                        guest.append("roles", {"role": "All"})
+                        guest.flags.ignore_permissions = True
+                        guest.flags.ignore_password_policy = True
+                        guest.insert()
+                        frappe.db.commit()
+                    except Exception:
+                        pass
+                if not frappe.db.exists("User", "Administrator"):
+                    try:
+                        admin = frappe.new_doc("User")
+                        admin.name = "Administrator"
+                        admin.email = "admin@example.com"
+                        admin.first_name = "Administrator"
+                        admin.enabled = 1
+                        admin.user_type = "System User"
+                        admin.append("roles", {"role": "System Manager"})
+                        admin.append("roles", {"role": "Administrator"})
+                        admin.append("roles", {"role": "All"})
+                        admin.flags.ignore_permissions = True
+                        admin.flags.ignore_password_policy = True
+                        admin.insert()
+                        frappe.db.commit()
+                    except Exception:
+                        pass
+                password = os.environ.get("ADMIN_PASSWORD") or os.environ.get("SUPER_ADMIN_PASSWORD")
+                if password:
+                    try:
+                        from frappe.utils.password import update_password
+                        update_password("Administrator", password)
+                        frappe.db.commit()
+                    except Exception:
+                        pass
             print("Frappe application installation verified.", flush=True)
         finally:
             frappe.destroy()
