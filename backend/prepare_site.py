@@ -105,6 +105,13 @@ def prepare():
                     print(f"Resuming standard installation for {app}; existing tables are preserved.", flush=True)
                     install_app(app, set_as_patched=True, force=False)
                     frappe.db.commit()
+            try:
+                from frappe.installer import set_all_patches_as_completed
+                for app in ("frappe", "payments", "lms"):
+                    set_all_patches_as_completed(app)
+                frappe.db.commit()
+            except Exception:
+                pass
             if hasattr(frappe.db, "exists") and frappe.db.exists("DocType", "User Type"):
                 for ut, r in [("System User", "All"), ("Website User", "All")]:
                     if not frappe.db.exists("User Type", ut):
@@ -160,6 +167,13 @@ def prepare():
                         frappe.db.commit()
                     except Exception:
                         pass
+            if hasattr(frappe.db, "exists") and frappe.db.exists("DocType", "Web Page"):
+                try:
+                    if hasattr(frappe.db, "has_column") and not frappe.db.has_column("Web Page", "template_path"):
+                        frappe.db.add_column("Web Page", "template_path", "Data")
+                        frappe.db.commit()
+                except Exception:
+                    pass
             print("Frappe application installation verified.", flush=True)
         finally:
             frappe.destroy()
