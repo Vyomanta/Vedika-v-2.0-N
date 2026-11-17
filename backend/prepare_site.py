@@ -105,6 +105,19 @@ def prepare():
                     print(f"Resuming standard installation for {app}; existing tables are preserved.", flush=True)
                     install_app(app, set_as_patched=True, force=False)
                     frappe.db.commit()
+            if hasattr(frappe.db, "exists") and frappe.db.exists("DocType", "User Type"):
+                for ut, r in [("System User", "All"), ("Website User", "All")]:
+                    if not frappe.db.exists("User Type", ut):
+                        try:
+                            doc = frappe.new_doc("User Type")
+                            doc.name = ut
+                            doc.role = r
+                            doc.is_standard = 1
+                            doc.flags.ignore_permissions = True
+                            doc.insert()
+                            frappe.db.commit()
+                        except Exception:
+                            pass
             if hasattr(frappe.db, "exists") and frappe.db.exists("DocType", "User"):
                 if not frappe.db.exists("User", "Guest"):
                     try:
