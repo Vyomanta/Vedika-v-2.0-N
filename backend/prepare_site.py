@@ -88,6 +88,13 @@ def prepare():
             frappe.init("lms.render", sites_path=str(sites_path), new_site=True)
             frappe.connect()
             installed = set(frappe.get_installed_apps())
+            if "frappe" not in installed and hasattr(frappe.db, "exists") and (frappe.db.exists("DocType", "User") or frappe.db.exists("Module Def", "Core")):
+                installed.add("frappe")
+                try:
+                    frappe.db.set_global("installed_apps", json.dumps(list(installed)))
+                    frappe.db.commit()
+                except Exception:
+                    pass
             if "frappe" not in installed:
                 password = os.environ.get("ADMIN_PASSWORD") or os.environ.get("SUPER_ADMIN_PASSWORD")
                 if not password or len(password) < 12:
