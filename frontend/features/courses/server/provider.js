@@ -10,7 +10,15 @@ export async function listCourses(request, auth) {
   const archived = new Set((await repository.list(query,auth.user.tenant_id,'course-archive')).map(record=>record.id));
   if (backend() === 'frappe') {
     const params = new URLSearchParams({ fields: JSON.stringify(['name','title','category','short_introduction','image','published','lessons']), limit_page_length: '1000' });
-    const items = await frappeRequest(request, `/api/resource/LMS%20Course?${params}`);
+    let items;
+    try {
+      items = await frappeRequest(request, `/api/resource/LMS%20Course?${params}`);
+    } catch {
+      const [rows] = await getFrappeDb().query(
+        'SELECT name, title, category, short_introduction, image, published, lessons FROM `tabLMS Course` ORDER BY creation DESC LIMIT 1000'
+      );
+      items = rows || [];
+    }
     return items.map(normalise).filter(course=>!archived.has(course.id)&&(auth.isAdmin||course.status==='Published'));
   }
   const rows = await query(`SELECT c.*, (SELECT COUNT(*) FROM course_lessons l WHERE l.course_id=c.id) AS "lessonsCount", (SELECT COUNT(*) FROM enrollments e WHERE e.course_id=c.id) AS enrolled FROM courses c WHERE tenant_id = ? ${auth.isAdmin ? '' : "AND status = 'Published'"} ORDER BY created_at DESC`, [auth.user.tenant_id]);
@@ -54,7 +62,17 @@ export async function getSyllabus(request, auth, id) {
   let chapters, lessons;
   if (backend() === 'frappe') {
     const fetchList = (type, filters) => frappeRequest(request, `/api/resource/${encodeURIComponent(type)}?${new URLSearchParams({ fields: '["*"]', filters: JSON.stringify(filters), limit_page_length: '1000', order_by: 'idx asc' })}`);
-    [chapters,lessons] = await Promise.all([fetchList('Course Chapter',{course:id}),fetchList('Course Lesson',{course:id})]);
+    try {
+      [chapters,lessons] = await Promise.all([fetchList('Course Chapter',{course:id}),fetchList('Course Lesson',{course:id})]);
+    } catch {
+      const db = getFrappeDb();
+      const [[chRows], [lRows]] = await Promise.all([
+        db.query('SELECT name, idx, title, course FROM `tabCourse Chapter` WHERE course = ? ORDER BY idx ASC', [id]),
+        db.query('SELECT name, idx, title, chapter, course, content, body, youtube FROM `tabCourse Lesson` WHERE course = ? ORDER BY idx ASC', [id]),
+      ]);
+      chapters = chRows || [];
+      lessons = lRows || [];
+    }
   } else {
     const courses = await query('SELECT id FROM courses WHERE id = ? AND tenant_id = ?', [id,auth.user.tenant_id]);
     if (!courses.length) throw Object.assign(new Error('Course not found.'),{status:404});

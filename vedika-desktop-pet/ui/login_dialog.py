@@ -57,7 +57,7 @@ class VedikaSetupLoginDialog(QDialog):
     Ensures microphone permissions and network connectivity are verified,
     and synchronizes user login with the Vedika LMS website credentials.
     """
-    def __init__(self, user_profile_manager, base_url="https://vedika-v20c.vercel.app", parent=None):
+    def __init__(self, user_profile_manager, base_url="https://vedika-ai.vercel.app", parent=None):
         super().__init__(parent)
         self.user_profile = user_profile_manager
         self.base_url = base_url

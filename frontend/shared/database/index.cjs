@@ -17,7 +17,7 @@ function getPool() {
       const url = new URL(process.env.DATABASE_URL);
       const local = ['localhost','127.0.0.1','[::1]'].includes(url.hostname);
       url.searchParams.set('sslmode',local?'disable':'verify-full');
-      postgresPool = new Pool({ connectionString: url.toString(), max: 5, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000, statement_timeout: 15000 });
+      postgresPool = new Pool({ connectionString: url.toString(), max: 5, connectionTimeoutMillis: 15000, idleTimeoutMillis: 30000, statement_timeout: 15000 });
     }
     return postgresPool;
   }
@@ -27,7 +27,7 @@ function getPool() {
       host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 4000), user: process.env.DB_USER,
       password: process.env.DB_PASSWORD, database: process.env.DB_NAME,
       ssl: process.env.DB_SSL === 'false' ? undefined : { minVersion: 'TLSv1.2', rejectUnauthorized: true },
-      connectionLimit: 5, connectTimeout: 5000, waitForConnections: true, queueLimit: 100,
+      connectionLimit: 5, connectTimeout: 15000, waitForConnections: true, queueLimit: 100,
     });
   }
   return mysqlPool;

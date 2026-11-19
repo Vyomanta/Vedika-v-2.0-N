@@ -171,7 +171,7 @@ export async function POST(request) {
       const target = payload.route || payload.url || (typeof payload === 'string' ? payload : null);
       if (typeof target === 'string') {
         const isRelative = target.startsWith('/') && !target.startsWith('//');
-        const isLmsUrl = target.startsWith('http://localhost') || target.startsWith('http://127.0.0.1') || target.startsWith('https://vedika.ai') || target.startsWith('https://vedika-v20c.vercel.app');
+        const isLmsUrl = target.startsWith('http://localhost') || target.startsWith('http://127.0.0.1') || target.startsWith('https://vedika.ai') || target.startsWith('https://vedika-ai.vercel.app') || target.startsWith('https://vedika-ai-plus.vercel.app') || target.startsWith('https://vedika-v20c.vercel.app');
         if (!isRelative && !isLmsUrl) {
           return NextResponse.json(
             { error: 'Prohibited navigation destination.' },

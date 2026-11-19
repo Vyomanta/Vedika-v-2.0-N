@@ -396,7 +396,7 @@ class CloudRelayPoller(QThread):
     tab_presence_changed = Signal(bool)
     relay_event_received = Signal(str)
 
-    def __init__(self, base_url="https://vedika-v20c.vercel.app", has_local_clients_fn=None):
+    def __init__(self, base_url="https://vedika-ai.vercel.app", has_local_clients_fn=None):
         super().__init__()
         self.base_url = base_url.rstrip("/")
         self.has_local_clients_fn = has_local_clients_fn
@@ -1113,7 +1113,7 @@ class DesktopPetApp(QObject):
 
     def open_vyomantha_website(self):
         """Opens Vedika production portal in default web browser and triggers pet speech response."""
-        self.open_url_by_gemini("https://vedika-v20c.vercel.app/")
+        self.open_url_by_gemini(f"{self.get_vyomanta_base_url()}/")
 
     def open_log_viewer_dialog(self):
         """Opens or brings to front the diagnostic and session log viewer dialog."""
@@ -1178,7 +1178,7 @@ class DesktopPetApp(QObject):
         raw_origin = self.get_request_origin(client.request()).lower()
         allowed_origins = [
             "http://localhost", "http://127.0.0.1", "https://localhost",
-            "https://vedika-v20c.vercel.app",
+            "https://vedika-ai.vercel.app", "https://vedika-ai-plus.vercel.app", "https://vedika-v20c.vercel.app",
             "https://vyomanta-ai.vercel.app", "https://vyomanta.vercel.app"
         ]
         if raw_origin and not any(raw_origin.startswith(ao) for ao in allowed_origins):
@@ -1627,7 +1627,7 @@ class DesktopPetApp(QObject):
                         return "http://localhost:3000"
                 except Exception:
                     pass
-        return "https://vedika-v20c.vercel.app"
+        return "https://vedika-ai.vercel.app"
 
     @Slot(str)
     def on_navigate_webapp_requested(self, route):

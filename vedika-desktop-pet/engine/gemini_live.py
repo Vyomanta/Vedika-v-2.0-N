@@ -517,12 +517,12 @@ class GeminiLiveWorker(QThread):
             self.client.animation_requested.emit(animation_name)
             return {"status": "success"}
 
-        def open_website(url: str = "https://vedika-v20c.vercel.app/") -> dict:
-            """Opens a website URL in the default browser when requested by the user. If the user asks to open the website, open Vedika, or open the learning portal without specifying a full external URL, default to 'https://vedika-v20c.vercel.app/'."""
+        def open_website(url: str = "https://vedika-ai.vercel.app/") -> dict:
+            """Opens a website URL in the default browser when requested by the user. If the user asks to open the website, open Vedika, or open the learning portal without specifying a full external URL, default to 'https://vedika-ai.vercel.app/'."""
             if not url or url.strip().lower() in ("website", "vedika", "portal", "vedika website", "the website", "page", "the page"):
-                url = "https://vedika-v20c.vercel.app/"
+                url = os.getenv("WEBAPP_URL", "https://vedika-ai.vercel.app/").rstrip("/") + "/"
             self.client.open_url_requested.emit(url)
-            is_homepage = url.rstrip("/").endswith("vedika-v20c.vercel.app") or "localhost" in url
+            is_homepage = any(url.rstrip("/").endswith(h) for h in ("vedika-ai.vercel.app", "vedika-ai-plus.vercel.app", "vedika-v20c.vercel.app")) or "localhost" in url
             if is_homepage:
                 return {
                     "status": "success",
@@ -988,7 +988,7 @@ class GeminiLiveWorker(QThread):
             + route_instructions +
             "3. If the user asks to switch experiments or control actions on an active page (e.g. 'switch to titration', 'show gas laws', 'switch to projectile motion', 'show cell organelles', 'switch to calculus visualizer', 'start presentation', 'clear screen'): call 'trigger_pet_action(action, target)' (e.g. action='select_experiment', target='titration').\n"
             "4. If the user asks for a hint on their current puzzle, call 'trigger_puzzle_hint'.\n"
-            "5. If the user asks to 'open the website', 'open Vedika', 'open portal', or open any page without specifying an external URL: IMMEDIATELY call 'open_website' with 'https://vedika-v20c.vercel.app/' or 'navigate_webapp' with the matching route. Reply with a short friendly confirmation (e.g. 'Opening Vedika for you!') and trigger the action immediately.\n"
+            "5. If the user asks to 'open the website', 'open Vedika', 'open portal', or open any page without specifying an external URL: IMMEDIATELY call 'open_website' with 'https://vedika-ai.vercel.app/' or 'navigate_webapp' with the matching route. Reply with a short friendly confirmation (e.g. 'Opening Vedika for you!') and trigger the action immediately.\n"
             "6. If the user asks to stop or pause voice chat, call 'stop_voice_chat' immediately.\n"
             "7. Trigger pet visual animations ('wave', 'jump') ONLY when the user explicitly asks for a trick or movement. Do NOT call 'play_animation' during normal dialogue or explanations.\n"
             "8. SCREEN VISION & CODE INSPECTION: When the user asks 'What is on my screen?', 'What is going on in this page?', 'Can you see what I am doing?', or asks about what is visually displayed without code context: call 'capture_user_screen'. NOTE: When the student's active code or error is ALREADY provided in your context or prompt, explain and guide the student DIRECTLY without calling 'capture_user_screen' for instant zero-latency response! Only call 'capture_user_screen' if visual inspection of the screen layout/canvas is genuinely needed.\n"
@@ -1686,9 +1686,9 @@ class GeminiLiveWorker(QThread):
                             elif func_name == "open_website":
                                 url = args.get("url", "")
                                 if not url or str(url).strip().lower() in ("website", "vedika", "portal", "vedika website", "the website", "page", "the page"):
-                                    url = "https://vedika-v20c.vercel.app/"
+                                    url = os.getenv("WEBAPP_URL", "https://vedika-ai.vercel.app/").rstrip("/") + "/"
                                 self.client.open_url_requested.emit(url)
-                                is_homepage = url.rstrip("/").endswith("vedika-v20c.vercel.app") or "localhost" in url
+                                is_homepage = any(url.rstrip("/").endswith(h) for h in ("vedika-ai.vercel.app", "vedika-ai-plus.vercel.app", "vedika-v20c.vercel.app")) or "localhost" in url
                                 resp = {"status": "success", "opened_url": url}
                                 if is_homepage:
                                     resp["instruction"] = "The Vedika homepage is now opening and playing its child welcome voice intro. STAY COMPLETELY SILENT. Do NOT speak, greet, or talk over the child voice narration. Remain still in idle state and wait until the student speaks to you."

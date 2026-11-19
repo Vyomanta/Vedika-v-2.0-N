@@ -15,6 +15,7 @@ class BootstrapLease:
         _, core = database_names(os.environ)
         scope = hashlib.sha256((os.environ["DB_HOST"] + ":" + core).encode()).hexdigest()
         self.key = "vedika:frappe-bootstrap:" + scope
+        self.migrated_key = "vedika:frappe-migrated:" + scope
         self.owner = secrets.token_hex(24)
         self.url = os.environ["UPSTASH_REDIS_REST_URL"].rstrip("/")
         self.headers = {"Authorization": "Bearer " + os.environ["UPSTASH_REDIS_REST_TOKEN"]}
@@ -68,15 +69,30 @@ class BootstrapLease:
             pass  # Expiring lease is retained if the store is temporarily unreachable.
 
 if __name__ == "__main__":
+    release_tag = (os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("VEDIKA_SCHEMA_VERSION") or "v1").strip()
+    force_migrate = os.environ.get("FORCE_FRAPPE_MIGRATE", "").strip().lower() in ("1", "true", "yes")
     with BootstrapLease() as lease:
         prepare()
-        commands = [
-            ["bench", "use", "lms.render"],
-            ["bench", "--site", "lms.render", "migrate"],
-            ["bench", "--site", "lms.render", "execute", "exec(open('/home/frappe/import_legacy.py').read())"],
-            ["bench", "--site", "lms.render", "execute", "exec(open('/home/frappe/grant_question_perm.py').read())"],
-        ]
-        for command in commands:
-            lease.check()
-            subprocess.run(command, check=True)
-        print("Frappe core, migrations, and permissions are ready.", flush=True)
+        lease.check()
+        subprocess.run(["bench", "use", "lms.render"], check=True)
+        migrated_stamp = None
+        try:
+            migrated_stamp = lease.command(["GET", lease.migrated_key])
+        except Exception:
+            migrated_stamp = None
+        if not force_migrate and migrated_stamp == release_tag:
+            print(f"Frappe core already migrated for release {release_tag[:12]}; starting WSGI immediately.", flush=True)
+        else:
+            commands = [
+                ["bench", "--site", "lms.render", "migrate"],
+                ["bench", "--site", "lms.render", "execute", "exec(open('/home/frappe/import_legacy.py').read())"],
+                ["bench", "--site", "lms.render", "execute", "exec(open('/home/frappe/grant_question_perm.py').read())"],
+            ]
+            for command in commands:
+                lease.check()
+                subprocess.run(command, check=True)
+            try:
+                lease.command(["SET", lease.migrated_key, release_tag])
+            except Exception:
+                pass
+            print("Frappe core, migrations, and permissions are ready.", flush=True)

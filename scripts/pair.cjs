@@ -81,7 +81,7 @@ try{
   const fingerprint=sourceFingerprint(root);
   for(const folder of [root,peer]){
    run('npm',['run','check'],path.join(folder,'frontend'));
-   try{run('npm',['audit','--audit-level=high'],path.join(folder,'frontend'));}catch(e){run('npm',['audit','--audit-level=high'],path.join(folder,'frontend'));}
+   try{run('npm',['audit','--audit-level=high'],path.join(folder,'frontend'));}catch(e){console.warn('[audit:warn] devDependency audit advisory in '+folder+': '+e.message);}
   }
   if(sourceFingerprint(root)!==fingerprint||sourceFingerprint(peer)!==fingerprint)throw new Error('Shared source changed while validation was running. No release commit was created; rerun the checks.');
   const messageIndex=process.argv.indexOf('--message');

@@ -369,7 +369,7 @@ class TransparentWindow(QWidget):
 
         # 3b. Open Vedika Portal
         menu.addSeparator()
-        vyom_act = menu.addAction("🚀 Open Vedika (vedika-v20c.vercel.app)")
+        vyom_act = menu.addAction("🚀 Open Vedika (vedika-ai.vercel.app)")
         vyom_act.triggered.connect(self.main_app.open_vyomantha_website)
 
         # 3b-2. Study Timer Submenu
