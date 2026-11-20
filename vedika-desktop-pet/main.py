@@ -156,8 +156,9 @@ class MascotLogger:
         if len(self.recent_buffer) > 400:
             self.recent_buffer.pop(0)
 
-        # Detect warnings or critical errors to mirror into errors.txt
-        if any(term in data for term in ("[!] Warning", "Receive loop error:", "Connection dropped or failed:", "WebSocket error", "1011 None", "Internal error encountered")):
+        # Detect warnings or critical errors to mirror into errors.txt (excluding normal scheduled 1008 GoAway session rotation)
+        is_goaway_or_rotation = any(k in data for k in ("1008", "GoAway", "goaway", "SILENT_ROTATION", "silent_rotation", "session duration reached"))
+        if not is_goaway_or_rotation and any(term in data for term in ("[!] Warning", "Receive loop error:", "Connection dropped or failed:", "WebSocket error", "1011 None", "Internal error encountered")):
             save_vedika_diagnostic_error_txt("Warning / Error detected in mascot execution", data.strip(), source="Mascot Logger")
 
         # Emit to Qt log viewer if available
@@ -527,7 +528,7 @@ class DesktopPetApp(QObject):
     def __init__(self):
         super().__init__()
         self.yt_resolved_signal.connect(self._on_yt_resolved_open_media)
-        self.app = QApplication(sys.argv)
+        self.app = QApplication.instance() or QApplication(sys.argv)
         
         # Set application icon for Windows taskbar and system tray
         for ico_cand in [os.path.join(EXE_DIR, "assets", "vedika.ico"), os.path.join(BUNDLE_DIR, "assets", "vedika.ico"), "assets/vedika.ico"]:
@@ -544,6 +545,7 @@ class DesktopPetApp(QObject):
         self.scan_assets()
         
         # Load user configurations
+        self.settings = {}
         self.settings_path = os.path.join(USER_DATA_DIR, "settings.json")
         self.current_pet_id = "eve"
         self.scale_factor = 0.8  # Default compact scale for modern displays
@@ -1112,8 +1114,16 @@ class DesktopPetApp(QObject):
                 self.pet.say("Voice Chat paused! Press F9 to resume. ⏸️", duration=2.5)
 
     def open_vyomantha_website(self):
-        """Opens Vedika production portal in default web browser and triggers pet speech response."""
-        self.open_url_by_gemini("https://vedika-ai.vercel.app/")
+        """Opens Vedika production portal in default web browser, unminimizes/focuses window, and triggers pet speech."""
+        url = "https://vedika-ai.vercel.app/"
+        if self.pet:
+            self.pet.say("Opening Vedika! 🚀", duration=2.5)
+            self.set_active_animation("wave")
+        self.last_browser_launch_time = time.time()
+        self.has_active_web_tab = True
+        self._do_open_url(url)
+        self.broadcast_to_webapp({"type": "NAVIGATE_WEBAPP", "payload": {"route": "/", "url": url}})
+        self.send_to_cloud_relay({"type": "NAVIGATE_WEBAPP", "payload": {"route": "/", "url": url}})
 
     def open_log_viewer_dialog(self):
         """Opens or brings to front the diagnostic and session log viewer dialog."""
@@ -1209,19 +1219,22 @@ class DesktopPetApp(QObject):
         except Exception:
             pass
 
+    def is_local_webapp_connected(self) -> bool:
+        """Returns True only if an active local WebSocket connection to the browser tab exists."""
+        return any(c.isValid() and c.state() == QAbstractSocket.SocketState.ConnectedState for c in getattr(self, 'web_clients', []))
+
     def on_ws_client_disconnected(self, client):
         print(f"[WS Server] Browser WebApp disconnected.")
         if client in self.web_clients:
             self.web_clients.remove(client)
-        if not self.is_webapp_connected():
+        if not self.is_local_webapp_connected():
             self.has_active_web_tab = False
             self.last_browser_launch_time = 0.0
             print("[WS Server] No active browser tabs connected. (has_active_web_tab=False)")
 
     def is_webapp_connected(self) -> bool:
         """Returns True if at least one active Vedika WebApp browser tab is connected via local WebSocket or Cloud Relay."""
-        has_local = any(c.isValid() and c.state() == QAbstractSocket.SocketState.ConnectedState for c in getattr(self, 'web_clients', []))
-        return has_local or getattr(self, 'has_active_web_tab', False)
+        return self.is_local_webapp_connected() or getattr(self, 'has_active_web_tab', False)
 
     @Slot(dict)
     def broadcast_to_webapp(self, message_dict) -> bool:
@@ -1642,8 +1655,20 @@ class DesktopPetApp(QObject):
         base_url = self.get_vyomanta_base_url()
         target_url = f"{base_url}{route}" if route.startswith("/") else route
         
+        # If route is "/" (home page) or user explicitly wants to open the website, ensure browser is open
+        if route == "/" and not self.is_browser_launching_grace_period():
+            print(f"[Main] Route is home ('/'). Launching browser to ensure window is open: '{target_url}'")
+            self.last_browser_launch_time = time.time()
+            self.has_active_web_tab = True
+            if self.pet:
+                self.pet.say("Opening Vedika! 🚀", duration=2.5)
+            self._do_open_url(target_url)
+            self.broadcast_to_webapp({"type": "NAVIGATE_WEBAPP", "payload": {"route": route, "url": target_url}})
+            self.send_to_cloud_relay({"type": "NAVIGATE_WEBAPP", "payload": {"route": route, "url": target_url}})
+            return
+
         # 1. Seamless in-tab navigation if an active browser tab is already open (Local WS or Cloud Relay)
-        if self.has_active_web_tab or self.is_webapp_connected():
+        if self.is_local_webapp_connected() or self.has_active_web_tab:
             print(f"[Main] Seamless in-tab navigation dispatched to active browser tab for route: '{route}' (No new tab opened).")
             if self.pet:
                 self.pet.say(f"Navigating to {route}! 🚀", duration=2.5)
@@ -1776,14 +1801,25 @@ class DesktopPetApp(QObject):
             return "/"
 
     def open_url_by_gemini(self, url):
-        """Intelligently routes URLs: Vedika URLs navigate inside active tab; external media/websites open in default browser."""
+        """Intelligently routes URLs: opens website in default browser, and if Vedika LMS, synchronizes active tab route."""
         if not url:
             return
 
-        # Check if URL belongs to Vedika LMS -> route seamlessly into active tab
+        # Check if URL belongs to Vedika LMS -> open in browser AND sync route to active tab
         if self.is_vyomanta_url(url):
             route = self.extract_route_from_vyomanta_url(url)
-            self.on_navigate_webapp_requested(route)
+            base_url = self.get_vyomanta_base_url()
+            target_url = f"{base_url}{route}" if route.startswith("/") else (route if route.startswith("http") else f"{base_url}/{route}")
+            print(f"[Main] Opening Vedika portal via browser launch: '{target_url}' (Route: '{route}')")
+            self.last_browser_launch_time = time.time()
+            self.has_active_web_tab = True
+            if self.pet:
+                self.pet.say("Opening Vedika! 🚀", duration=2.5)
+                self.set_active_animation("wave")
+            # Always open the browser window visibly so user sees the page
+            self._do_open_url(target_url)
+            self.broadcast_to_webapp({"type": "NAVIGATE_WEBAPP", "payload": {"route": route, "url": target_url}})
+            self.send_to_cloud_relay({"type": "NAVIGATE_WEBAPP", "payload": {"route": route, "url": target_url}})
             return
 
         base_url = self.get_vyomanta_base_url()
@@ -1908,6 +1944,7 @@ class DesktopPetApp(QObject):
             try:
                 with open(target_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                    self.settings = data if isinstance(data, dict) else {}
                     self.current_pet_id = data.get("current_pet_id", "vedika")
                     self.scale_factor = data.get("scale", 1.0)
                     self.always_on_top = data.get("always_on_top", True)

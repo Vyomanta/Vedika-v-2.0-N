@@ -242,8 +242,11 @@ class GeminiLiveWorker(QThread):
         self.session_send_lock = asyncio.Lock()
         try:
             self.loop.run_until_complete(self._main())
-        except asyncio.CancelledError:
-            print("[GeminiLiveWorker] Async tasks cancelled.")
+        except (asyncio.CancelledError, RuntimeError) as e:
+            if "Event loop stopped before Future completed" in str(e) or isinstance(e, asyncio.CancelledError):
+                print("[GeminiLiveWorker] Async tasks and event loop stopped cleanly.")
+            else:
+                print(f"[GeminiLiveWorker] Worker thread loop stopped with: {e}")
         except Exception as e:
             print(f"[GeminiLiveWorker] Worker thread loop stopped with: {e}")
         finally:
@@ -2058,12 +2061,17 @@ class GeminiLiveWorker(QThread):
                 break
             except Exception as e:
                 err_str = str(e)
-                print(f"[GeminiLiveWorker] Receive loop error: {err_str}")
-                is_goaway = any(k in err_str.lower() for k in ["1008", "goaway", "session duration reached"])
+                is_goaway = any(k in err_str.lower() for k in ["1008", "goaway", "session duration reached", "operation was aborted"])
                 if is_goaway:
                     print("[GeminiLiveWorker] Normal Gemini session lifetime rotation (1008 / GoAway limit). Reconnecting silently in background.")
+                    try:
+                        if self.session and hasattr(self.session, "close"):
+                            asyncio.create_task(self.session.close())
+                    except Exception:
+                        pass
                     self.notify_failure("1008_GOAWAY_SILENT_ROTATION")
                 else:
+                    print(f"[GeminiLiveWorker] Receive loop error: {err_str}")
                     self.notify_failure(f"WebSocket error/closure: {e}")
                 break
 
@@ -2572,15 +2580,15 @@ class GeminiLiveClient(QObject):
 
     @Slot(str)
     def on_connection_failed(self, error_message):
-        print(f"[GeminiLive] Connection dropped or failed: {error_message}")
         err_lower = str(error_message).lower()
-        is_silent_rotation = "1008_goaway_silent_rotation" in err_lower or any(k in err_lower for k in ["1008", "goaway", "session duration reached"])
+        is_silent_rotation = "1008_goaway_silent_rotation" in err_lower or any(k in err_lower for k in ["1008", "goaway", "session duration reached", "operation was aborted"])
 
         if is_silent_rotation:
-            print("[GeminiLive] Silent session rotation active. Suppressing vocal error notification and preserving greeting suppression.")
+            print("[GeminiLive] Normal session rotation active (1008 GoAway). Preserving silent reconnection.")
             self._greeting_was_sent = True
             self.initial_greeting_sent = True
         else:
+            print(f"[GeminiLive] Connection dropped or failed: {error_message}")
             graceful, tech = self.format_graceful_error(error_message)
             self.error_occurred.emit(graceful, tech)
             if hasattr(self.pet, 'set_error'):

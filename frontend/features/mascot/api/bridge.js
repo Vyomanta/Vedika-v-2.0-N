@@ -222,6 +222,7 @@ class MascotBridge {
       // Skip redundant navigation if active tab is already exactly at target route
       if (targetRoute === currentFull || targetRoute === currentPathOnly) {
         console.log('[MascotBridge] Already at target route, skipping redundant navigation:', targetRoute);
+        try { if (typeof window !== 'undefined' && window.focus) window.focus(); } catch (e) {}
         this.send({
           type: 'NAVIGATE_ACK',
           payload: {
@@ -233,6 +234,7 @@ class MascotBridge {
       }
 
       console.log('[MascotBridge] Navigating active tab to:', targetRoute);
+      try { if (typeof window !== 'undefined' && window.focus) window.focus(); } catch (e) {}
 
       // Confirm receipt back to mascot immediately
       this.send({
