@@ -6,5 +6,6 @@
   "static_mode": true,
   "auto_activity_reaction": true,
   "tutor_language": "all",
-  "tutor_subject": "all"
+  "tutor_subject": "all",
+  "webapp_url": "https://vedika-ai.vercel.app"
 }

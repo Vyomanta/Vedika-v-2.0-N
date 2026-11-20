@@ -1113,7 +1113,7 @@ class DesktopPetApp(QObject):
 
     def open_vyomantha_website(self):
         """Opens Vedika production portal in default web browser and triggers pet speech response."""
-        self.open_url_by_gemini(f"{self.get_vyomanta_base_url()}/")
+        self.open_url_by_gemini("https://vedika-ai.vercel.app/")
 
     def open_log_viewer_dialog(self):
         """Opens or brings to front the diagnostic and session log viewer dialog."""
@@ -1178,7 +1178,9 @@ class DesktopPetApp(QObject):
         raw_origin = self.get_request_origin(client.request()).lower()
         allowed_origins = [
             "http://localhost", "http://127.0.0.1", "https://localhost",
-            "https://vedika-ai.vercel.app", "https://vedika-ai-plus.vercel.app", "https://vedika-v20c.vercel.app",
+            "https://vedika-ai.vercel.app",
+            "https://vedika-ai-plus.vercel.app",
+            "https://vedika-v20c.vercel.app",
             "https://vyomanta-ai.vercel.app", "https://vyomanta.vercel.app"
         ]
         if raw_origin and not any(raw_origin.startswith(ao) for ao in allowed_origins):
@@ -1614,8 +1616,10 @@ class DesktopPetApp(QObject):
             traceback.print_exc()
 
     def get_vyomanta_base_url(self):
-        """Returns active base URL for Vedika WebApp (defaults to production URL https://vedika-v20c.vercel.app)."""
+        """Returns active base URL for Vedika WebApp (defaults to production URL https://vedika-ai.vercel.app)."""
         env_url = os.getenv("WEBAPP_URL") or os.getenv("VYOMANTA_BASE_URL") or os.getenv("NEXT_PUBLIC_APP_URL")
+        if not env_url and hasattr(self, 'settings') and isinstance(self.settings, dict):
+            env_url = self.settings.get("webapp_url") or self.settings.get("base_url")
         if env_url:
             return env_url.rstrip("/")
         # If an active local development tab is connected, use localhost:3000
@@ -1623,8 +1627,8 @@ class DesktopPetApp(QObject):
             for client in getattr(self, 'web_clients', []):
                 try:
                     origin = self.get_request_origin(client.request())
-                    if origin and "localhost" in origin:
-                        return "http://localhost:3000"
+                    if origin and ("localhost" in origin or "vedika" in origin or "vyomanta" in origin):
+                        return origin.rstrip("/")
                 except Exception:
                     pass
         return "https://vedika-ai.vercel.app"
@@ -1739,7 +1743,9 @@ class DesktopPetApp(QObject):
         if url_lower.startswith("/"):
             return True
         if (
-            "vedika-v20c.vercel.app" in url_lower
+            "vedika-ai.vercel.app" in url_lower
+            or "vedika-ai-plus.vercel.app" in url_lower
+            or "vedika-v20c.vercel.app" in url_lower
             or "vedika" in url_lower
             or "vyomanta" in url_lower
             or "vyomantha" in url_lower
@@ -1751,7 +1757,7 @@ class DesktopPetApp(QObject):
         return False
 
     def extract_route_from_vyomanta_url(self, url: str) -> str:
-        """Extracts pathname route from a Vedika URL (e.g. https://vedika-v20c.vercel.app/courses -> /courses)."""
+        """Extracts pathname route from a Vedika URL (e.g. https://vedika-ai.vercel.app/courses -> /courses)."""
         if not url:
             return "/"
         url_lower = url.lower().strip()

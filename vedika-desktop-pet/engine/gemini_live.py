@@ -520,9 +520,9 @@ class GeminiLiveWorker(QThread):
         def open_website(url: str = "https://vedika-ai.vercel.app/") -> dict:
             """Opens a website URL in the default browser when requested by the user. If the user asks to open the website, open Vedika, or open the learning portal without specifying a full external URL, default to 'https://vedika-ai.vercel.app/'."""
             if not url or url.strip().lower() in ("website", "vedika", "portal", "vedika website", "the website", "page", "the page"):
-                url = os.getenv("WEBAPP_URL", "https://vedika-ai.vercel.app/").rstrip("/") + "/"
+                url = "https://vedika-ai.vercel.app/"
             self.client.open_url_requested.emit(url)
-            is_homepage = any(url.rstrip("/").endswith(h) for h in ("vedika-ai.vercel.app", "vedika-ai-plus.vercel.app", "vedika-v20c.vercel.app")) or "localhost" in url
+            is_homepage = url.rstrip("/").endswith("vedika-ai.vercel.app") or url.rstrip("/").endswith("vedika-ai-plus.vercel.app") or url.rstrip("/").endswith("vedika-v20c.vercel.app") or "localhost" in url
             if is_homepage:
                 return {
                     "status": "success",
@@ -1686,9 +1686,9 @@ class GeminiLiveWorker(QThread):
                             elif func_name == "open_website":
                                 url = args.get("url", "")
                                 if not url or str(url).strip().lower() in ("website", "vedika", "portal", "vedika website", "the website", "page", "the page"):
-                                    url = os.getenv("WEBAPP_URL", "https://vedika-ai.vercel.app/").rstrip("/") + "/"
+                                    url = "https://vedika-ai.vercel.app/"
                                 self.client.open_url_requested.emit(url)
-                                is_homepage = any(url.rstrip("/").endswith(h) for h in ("vedika-ai.vercel.app", "vedika-ai-plus.vercel.app", "vedika-v20c.vercel.app")) or "localhost" in url
+                                is_homepage = url.rstrip("/").endswith("vedika-ai.vercel.app") or url.rstrip("/").endswith("vedika-ai-plus.vercel.app") or url.rstrip("/").endswith("vedika-v20c.vercel.app") or "localhost" in url
                                 resp = {"status": "success", "opened_url": url}
                                 if is_homepage:
                                     resp["instruction"] = "The Vedika homepage is now opening and playing its child welcome voice intro. STAY COMPLETELY SILENT. Do NOT speak, greet, or talk over the child voice narration. Remain still in idle state and wait until the student speaks to you."
